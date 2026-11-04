@@ -279,6 +279,15 @@ class MapTests(unittest.TestCase):
         self.assertEqual(legend.getpixel((8, 28)), (136, 221, 238, 255))
         self.assertEqual(legend.getpixel((8, 83)), (159, 223, 255, 255))
 
+    def test_bounded_healthy_canadian_radar_does_not_trigger_fallback(self):
+        m = self.manager(country='CA', history=12)
+        m.refresh({'rvradar': True})
+        self.assertIn('rvradar', m.state)
+        self.assertEqual(m.state['rvradar']['source'], 'ECCC')
+        self.assertFalse(m.state['rvradar']['complete'])
+        self.assertFalse(any('weather-maps.json' in u or 'tilecache.rainviewer' in u
+                             for u in self.provider.calls))
+
     def test_partial_canadian_radar_triggers_fallback(self):
         m = self.manager(country='CA', history=4)
         broken = maps.utc(NOW-360).replace(':', '%3A')
