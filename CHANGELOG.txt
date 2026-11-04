@@ -9,6 +9,9 @@ v1.0.31 (fork development branch; not an upstream release)
 * Prefer Environment Canada radar in Canada with RainViewer fallback
 * Show loading/unavailable/cached status and prioritize the selected location
 * Add behavioral regressions for cache, failure, time and AF3 property contracts
+* Fetch first two forecast frames (and bounded radar batches) before backfilling history
+* Preserve complete animations during model-run/source transitions and retry Canadian radar fallback
+* Pin Universal Blue legend labels to RainViewer's published intensity samples
 
 v1.0.30 (fork development branch; not an upstream release)
 --------------------------------------------------------
