@@ -277,6 +277,70 @@ class MapTests(unittest.TestCase):
         self.assertEqual(list(path.parent.glob('*.tmp')), [])
 
 
+    def test_stale_but_responsive_geomet_radar_falls_back_to_fresh_rainviewer(self):
+        # GeoMet still returns HTTP 200 and a complete catalogue, but the
+        # newest Canadian observation has not advanced for over 30 minutes.
+        m = self.manager(country='CA', history=4)
+        m.refresh({'rvradar': True})
+        self.assertEqual(m.state['rvradar']['source'], 'ECCC')
+        self.assertTrue(m.state['rvradar']['complete'])
+        self.now += 2401
+        previous_fetch = m.fetch
+        def current_rainviewer(url):
+            if 'weather-maps.json' in url:
+                latest = (self.now // 600) * 600
+                return json.dumps({'radar': {'past': [
+                    dict(time=latest-i*600, path='/v2/radar/'+str(latest-i*600))
+                    for i in range(12)
+                ]}}).encode()
+            return previous_fetch(url)
+        m.fetch = current_rainviewer
+
+        m.refresh({'rvradar': True})
+        self.assertTrue(any('weather-maps.json' in u or
+                            'tilecache.rainviewer' in u for u in self.provider.calls))
+        self.assertEqual(m.state['rvradar']['source'], 'RainViewer')
+        rv_newest = max(f['valid'] for f in m.state['rvradar']['frames'])
+        self.assertGreater(rv_newest, NOW)
+        # The next cycle must not overwrite fresh RainViewer imagery with a
+        # complete but older GeoMet sequence.
+        self.now += 61
+        m.refresh({'rvradar': True})
+        self.assertEqual(m.state['rvradar']['source'], 'RainViewer')
+        self.assertGreaterEqual(max(f['valid'] for f in m.state['rvradar']['frames']), rv_newest)
+
+    def test_cached_only_forecast_refresh_does_not_reset_freshness(self):
+        m = self.manager()
+        for _ in range(5):
+            m.refresh({'gctemp': True})
+            self.now += 61
+        old = m.state['gctemp'].copy()
+        self.assertTrue(old['complete'])
+        old_valid_times = [f['valid'] for f in old['frames']]
+        # Simulate an unchanged model catalogue whose PNGs are all on disk.
+        # No fresh image is downloaded even though the service refreshes it.
+        m.metadata = lambda kind: {
+            'times': old_valid_times, 'run': old['run'], 'style': old['style'],
+        }
+        self.now = old['updated'] + 21601
+        map_requests = [u for u in self.provider.calls if 'REQUEST=GetMap' in u]
+        m.refresh({'gctemp': True})
+        self.assertEqual(
+            [u for u in self.provider.calls if 'REQUEST=GetMap' in u],
+            map_requests)
+        self.assertEqual(m.state['gctemp']['updated'], old['updated'])
+        self.assertGreater(m.state['gctemp']['attempt'], old['attempt'])
+        self.assertTrue(self.props(m, {'gctemp': True})['Map.2.Time.0'].startswith('Cached'))
+
+    def test_newly_downloaded_forecast_frames_advance_freshness(self):
+        m = self.manager()
+        m.refresh({'gctemp': True})
+        first_updated = m.state['gctemp']['updated']
+        self.now += 61
+        m.refresh({'gctemp': True})
+        self.assertEqual(m.state['gctemp']['updated'], self.now)
+        self.assertGreater(m.state['gctemp']['updated'], first_updated)
+
     def test_fresh_fallback_replaces_expiring_complete_radar(self):
         m = self.manager(country='CA', history=12)
         for _ in range(3):

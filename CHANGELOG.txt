@@ -5,6 +5,9 @@ v1.0.32 (fork development branch; not an upstream release)
 * Backfill healthy animations in bounded one-minute service passes
 * Keep outage retry backoff and the shared RainViewer tile rate limit
 * Align test image timestamps with simulated time and cover refresh regressions
+* Detect stalled but responsive Canadian radar and prefer fresher RainViewer images
+* Preserve actual PNG-download freshness when only cached forecast frames are reused
+* Prevent complete but stale GeoMet radar from replacing newer fallback imagery
 
 v1.0.31 (fork development branch; not an upstream release)
 --------------------------------------------------------
