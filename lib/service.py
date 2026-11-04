@@ -22,6 +22,7 @@ def Main():
 
 	# Service
 	while not utils.monitor.abortRequested():
+		sleep = 300
 		utils.setsetting('service', 'running')
 
 		# Init
@@ -40,7 +41,8 @@ def Main():
 			for locid in locations:
 				if utils.monitor.abortRequested():
 					break
-				weather.Main(locid, mode='download')
+				download = weather.Main(locid, mode='download')
+				sleep = min(sleep, getattr(download, 'map_retry_delay', None) or 300)
 				if locid == str(utils.settingrpc('weather.currentlocation')):
 					weather.Main(locid, mode='update')
 			utils.setsetting('service', 'idle')
@@ -66,7 +68,7 @@ def Main():
 
 		# Sleep
 		startup = False
-		utils.monitor.waitForAbort(300)
+		utils.monitor.waitForAbort(sleep)
 
 	utils.log(f'Stopping service ...')
 	api.s.close()

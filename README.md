@@ -37,14 +37,19 @@ does not let roads bleed through the legend. There are no skin patches or extra 
 
 Changing zoom or map appearance creates a new cache. A loading message appears until
 that view has a complete background and imagery. The selected location is downloaded and
-published before other saved locations. The service checks every five minutes; complete
-radar is refreshed after ten minutes and forecasts after three hours. Failed layers retry
-independently. Initial downloads are deliberately bounded (two new frames per forecast
-layer and three or four new radar frames per pass). Available near-term weather appears
-first, and additional animation frames fill in during subsequent five-minute cycles.
-During a model run change or radar source fallback, the previous complete animation
-remains visible until a complete replacement has been downloaded. RainViewer's
-Universal Blue legend uses the provider's published rain/snow dBZ colour table.
+published before other saved locations. The service normally checks every five minutes;
+healthy incomplete animations request another bounded pass after about one minute.
+Initial downloads remain limited to two new frames per forecast layer and three or four
+new radar frames per pass, with the shared RainViewer tile rate limit still enforced.
+Near-term weather appears first; a nine-frame forecast normally fills in about four
+minutes plus download time. Complete radar refreshes after ten minutes and forecasts
+after three hours. Failed downloads and missing legends retain the normal retry backoff.
+
+Usable cached frames survive download failures. Radar selection considers the newest
+observation and the number of remaining usable frames, so fresh fallback imagery can
+replace stale history immediately. Forecast model runs remain separate, with a useful
+previous animation retained while its replacement fills. RainViewer's Universal Blue
+legend uses the provider's published rain/snow dBZ colour table.
 
 ### Validation
 

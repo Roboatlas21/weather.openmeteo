@@ -52,7 +52,7 @@ class Main():
 					utils.setupdate(f'loc{locid}data')
 
 			# Snapshot location/settings once; each layer owns its cache and freshness.
-			self.mapmanager().refresh(self.enabled_maps())
+			self.map_retry_delay = self.mapmanager().refresh(self.enabled_maps())
 
 		# Update
 		elif self.mode == 'update' or self.mode == 'kodi':

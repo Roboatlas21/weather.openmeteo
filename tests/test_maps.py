@@ -2,10 +2,12 @@
 import io
 import json
 import math
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 from PIL import Image
 from lib import maps
 from lib.maptiles import mercator_segments, location_tile
@@ -64,6 +66,15 @@ class MapTests(unittest.TestCase):
         maps._METADATA.clear()
         self.provider = Provider()
         self.now = NOW
+        # Production writes and cache expiry share wall time. Keep PNG mtimes
+        # on the simulated clock too, including unpublished replacement frames.
+        save_image = maps.save_image
+        def save_at_test_time(path, image):
+            save_image(path, image)
+            os.utime(path, (self.now, self.now))
+        writer = patch.object(maps, 'save_image', save_at_test_time)
+        writer.start()
+        self.addCleanup(writer.stop)
 
     def manager(self, **kwargs):
         args = dict(root=self.tmp.name, lat=43.36, lon=-80.31, zoom=8, fetch=self.provider, clock=lambda: self.now)
@@ -265,6 +276,122 @@ class MapTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(), b'previous')
         self.assertEqual(list(path.parent.glob('*.tmp')), [])
 
+
+    def test_fresh_fallback_replaces_expiring_complete_radar(self):
+        m = self.manager(country='CA', history=12)
+        for _ in range(3):
+            m.refresh({'rvradar': True})
+            self.now += 61
+        self.assertTrue(m.state['rvradar']['complete'])
+        # Only the newest ECCC frame remains inside the three-hour window.
+        self.now = NOW + 10500
+        provider = self.provider
+        def fresh_fallback(url):
+            if 'weather-maps.json' in url:
+                return json.dumps({'radar': {'past': [
+                    dict(time=self.now-i*600, path='/v2/radar/'+str(self.now-i*600))
+                    for i in range(12)
+                ]}}).encode()
+            return provider(url)
+        m.fetch = fresh_fallback
+        self.provider.fail = lambda url: 'Radar_1km_SfcPrecipType' in url
+        m.refresh({'rvradar': True})
+        state = m.state['rvradar']
+        self.assertEqual(state['source'], 'RainViewer')
+        self.assertEqual(len(state['frames']), 3)
+        self.assertEqual(max(f['valid'] for f in state['frames']), self.now)
+        self.assertNotIn('Cached', self.props(m, {'rvradar': True})['Map.1.Time.0'])
+
+    def test_failed_new_frame_keeps_compatible_cached_history(self):
+        m = self.manager(country='CA')
+        m.refresh({'rvradar': True})
+        previous = {f['file'] for f in m.state['rvradar']['frames']}
+        self.assertEqual(len(previous), 4)
+        self.now += 720
+        m.metadata = lambda kind: {
+            'run': 0, 'style': maps.LAYERS['rvradar'][1],
+            'times': [NOW+i*360 for i in range(-9, 3)],
+        }
+        broken = maps.utc(NOW+360).replace(':', '%3A')
+        # Also fail fallback, so publication must retain the usable ECCC history.
+        self.provider.fail = lambda url: (
+            ('REQUEST=GetMap' in url and broken in url) or 'weather-maps.json' in url
+        )
+        start = len(self.provider.calls)
+        m.refresh({'rvradar': True})
+        state = m.state['rvradar']
+        self.assertEqual(state['source'], 'ECCC')
+        self.assertEqual(len(state['frames']), 5)
+        self.assertTrue(previous.issubset({f['file'] for f in state['frames']}))
+        self.assertEqual(max(f['valid'] for f in state['frames']), self.now)
+        # One successful image and one failed image; no further network burst.
+        self.assertEqual(sum('REQUEST=GetMap' in u for u in self.provider.calls[start:]), 2)
+        self.assertFalse(state['continuing'])
+
+    def test_equal_fresh_fallback_does_not_shorten_canadian_history(self):
+        m = self.manager(country='CA')
+        for _ in range(3):
+            m.refresh({'rvradar': True})
+            self.now += 61
+        before = m.state['rvradar']['frames'][:]
+        m.sequence('rvradar', False)
+        self.assertEqual(m.state['rvradar']['source'], 'ECCC')
+        self.assertEqual(m.state['rvradar']['frames'], before)
+
+    def test_healthy_forecast_backfills_in_one_minute_batches(self):
+        enabled = {'gctemp': True}
+        m = self.manager()
+        self.assertEqual(m.refresh(enabled), 60)
+        start = len(self.provider.calls)
+        self.now += 59
+        self.assertEqual(m.refresh(enabled), 1)
+        self.assertEqual(len(self.provider.calls), start)
+        self.now += 1
+        # Reconstruct managers between cycles just like the Kodi adapter does.
+        for remaining in (60, 60, 60, 300):
+            m = self.manager()
+            start = len(self.provider.calls)
+            self.assertEqual(m.refresh(enabled), remaining)
+            self.assertLessEqual(sum('REQUEST=GetMap' in u for u in self.provider.calls[start:]), 2)
+            if remaining == 60:
+                self.now += 60
+        self.assertEqual(self.now-NOW, 240)
+        self.assertTrue(m.state['gctemp']['complete'])
+        self.assertEqual(len(m.state['gctemp']['frames']), 9)
+        self.assertEqual(m.continuation_delay({'gctemp': False}), 300)
+
+    def test_failed_downloads_and_legends_keep_normal_retry_backoff(self):
+        m = self.manager()
+        self.provider.fail = lambda url: 'REQUEST=GetMap' in url
+        self.assertEqual(m.refresh({'gctemp': True}), 300)
+        start = len(self.provider.calls)
+        self.now += 60
+        self.assertEqual(m.refresh({'gctemp': True}), 300)
+        self.assertEqual(len(self.provider.calls), start)
+        self.now += 241
+        self.provider.fail = lambda url: 'GetLegendGraphic' in url
+        self.assertEqual(m.refresh({'gcwind': True}), 300)
+        self.assertTrue(m.state['gcwind']['frames'])
+        self.assertFalse(m.state['gcwind']['continuing'])
+
+    def test_missing_canadian_legend_does_not_trigger_radar_fallback(self):
+        m = self.manager(country='CA')
+        self.provider.fail = lambda url: 'GetLegendGraphic' in url
+        self.assertEqual(m.refresh({'rvradar': True}), 300)
+        self.assertEqual(m.state['rvradar']['source'], 'ECCC')
+        self.assertFalse(m.state['rvradar']['legend_ready'])
+        self.assertFalse(any('rainviewer' in url for url in self.provider.calls))
+
+    def test_cleanup_keeps_pending_images_until_their_retention_expires(self):
+        m = self.manager()
+        recent = m.directory / 'pending.png'
+        expired = m.directory / 'expired.png'
+        maps.save_image(recent, Image.new('RGBA', (10, 10)))
+        maps.save_image(expired, Image.new('RGBA', (10, 10)))
+        os.utime(expired, (self.now-86401, self.now-86401))
+        m.cleanup()
+        self.assertTrue(recent.is_file())
+        self.assertFalse(expired.exists())
 
     def test_universal_blue_legend_matches_rainviewer_reference(self):
         # 15/25/35/45/55 dBZ, exact RainViewer colour scheme 2 RGB values.

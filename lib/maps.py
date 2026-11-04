@@ -24,6 +24,7 @@ from . import maptiles
 SIZE = maptiles.CANVAS_SIZE
 SCHEMA = 4
 HISTORY_SLOTS = 48  # Clear slots left by older versions/settings; stock AF3 reads 24.
+CONTINUE_INTERVAL = 60  # Small, healthy batches can resume before the normal service cycle.
 GEOMET = 'https://geo.weather.gc.ca/geomet'
 LAYERS = {
     'rvradar': ('Radar_1km_SfcPrecipType', 'SfcPrecipType_Dis'),
@@ -304,7 +305,7 @@ class Maps:
         return native.transform((SIZE, SIZE), affine, layout['affine'], resample=bilinear)
 
     def sequence(self, kind, geomet=True):
-        """Build a bounded batch and preserve a complete previous animation.
+        """Build a bounded batch; return completion, image failure and legend readiness.
 
         Files are named by provider, model run, style and valid timestamp. New
         frames can therefore be accumulated over several service cycles without
@@ -341,7 +342,7 @@ class Maps:
 
         radar = kind == 'rvradar'
         # Limit first-run downloads. Finish current frames before older history
-        # and let the five-minute service cycle fill the animation gradually.
+        # and let short continuation passes fill the animation gradually.
         budget = (4 if geomet else 3) if radar else 2
         order = list(reversed(frames)) if radar else sorted(
             frames, key=lambda frame: (abs(frame[0] - now), frame[0]))
@@ -354,7 +355,7 @@ class Maps:
             style_id = hashlib.sha256((style + str(legend_ready)).encode()).hexdigest()[:8]
             filename = '{}_{}_{}_{}_{}.png'.format(kind, source, run, style_id, valid)
             if not self.path(filename):
-                if requests >= budget:
+                if requests >= budget or failed:
                     continue
                 requests += 1
                 try:
@@ -363,7 +364,8 @@ class Maps:
                 except (OSError, ValueError, TypeError) as exc:
                     self.log('{} frame {} unavailable: {}'.format(kind, valid, exc))
                     failed = True
-                    break
+                    # Stop network requests, but still collect compatible cached frames.
+                    continue
             completed.append({'valid': valid, 'file': filename})
 
         if not completed:
@@ -392,18 +394,30 @@ class Maps:
             and old.get('legend_ready') == legend_ready
         )
 
-        keep_old = bool(old_available and not new_state['complete'] and (
-            # During a model/source rollover, don't replace a full animation
-            # with the first one or two frames of its successor.
-            old.get('complete') or
-            # A partial fallback should not displace a more useful frame set.
-            (not same_sequence and (
-                len(completed) < len(old_available) or
-                (source == 'RainViewer' and old.get('source') == 'ECCC'
-                 and len(completed) == len(old_available)
-                 and completed[-1]['valid'] <= max(f['valid'] for f in old_available))
-            ))
-        ))
+        if same_sequence:
+            # Keep usable history after a failed request or a moving time window.
+            # Never merge providers, model runs, styles or legend variants.
+            by_time = {f['valid']: f for f in old_available}
+            by_time.update((f['valid'], f) for f in completed)
+            times = sorted(by_time)
+            times = times[-self.history:] if radar else forecast_times(times, now, self.history)
+            new_state['frames'] = [by_time[t] for t in times]
+
+        keep_old = False
+        if old_available and not same_sequence and not new_state['complete']:
+            if radar:
+                old_newest = max(f['valid'] for f in old_available)
+                new_newest = completed[-1]['valid']
+                # Fresh observations outrank a longer but older animation.
+                # An old "complete" flag says nothing about today's usable history.
+                keep_old = (now - old_newest <= 1800 and old_newest >= new_newest and (
+                    len(old_available) > len(completed) or
+                    (len(old_available) == len(completed) and old.get('source') == 'ECCC')
+                ))
+            else:
+                # Keep a useful coherent model run while its successor fills.
+                keep_old = (old.get('complete') and now - old.get('updated', 0) <= 21600
+                            and len(old_available) > len(completed))
         if keep_old:
             # The candidate frames remain on disk and are reused next pass,
             # but AF3 continues displaying the previous coherent sequence.
@@ -414,7 +428,7 @@ class Maps:
         self.commit()
         # A bounded-but-healthy initial download is not an outage. Only
         # actual provider errors should trigger the Canadian radar fallback.
-        return new_state['complete'], failed
+        return new_state['complete'], failed, legend_ready
 
     def refresh(self, enabled):
         """Refresh enabled layers independently; one unavailable layer cannot block others."""
@@ -435,18 +449,20 @@ class Maps:
             interval = 600 if kind == 'rvradar' else 10800
             now = int(self.clock())
             age = now - old.get('updated', 0)
-            if (old.get('complete') and old.get('history') == self.history and 0 <= age < interval
+            if (old.get('complete') and not old.get('continuing')
+                    and old.get('history') == self.history and 0 <= age < interval
                     and not (kind == 'rvradar' and self.prefer_geomet
                              and old.get('source') == 'RainViewer')
                     and all(self.path(f['file']) for f in old.get('frames', []))):
                 continue
-            if 0 <= now - old.get('attempt', 0) < 240:
+            retry_interval = CONTINUE_INTERVAL if old.get('continuing') else 240
+            if 0 <= now - old.get('attempt', 0) < retry_interval:
                 continue
             try:
-                complete, failed = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
+                complete, failed, legend_ready = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
             except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
                 self.log('{} unavailable: {}'.format(kind, exc))
-                complete, failed = False, True
+                complete, failed, legend_ready = False, True, False
             # A genuinely failed Canadian radar fetch needs fallback, even
             # when some valid frames were already downloaded. A normal bounded
             # history fill does not need an alternate provider.
@@ -455,10 +471,22 @@ class Maps:
                     self.sequence(kind, False)
                 except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
                     self.log('RainViewer fallback unavailable: ' + str(fallback_exc))
-            if not complete:
-                self.state.setdefault(kind, {})['attempt'] = now
-                self.commit()
+            state = self.state.setdefault(kind, {})
+            # Only successful bounded work gets the short cadence. Outages and
+            # missing legends retain the normal retry backoff.
+            state['continuing'] = not complete and not failed and legend_ready
+            state['attempt'] = int(self.clock())
+            self.commit()
         self.cleanup()
+        return self.continuation_delay(enabled)
+
+    def continuation_delay(self, enabled):
+        """Return the next healthy backfill delay; completed/failed layers stay idle."""
+        now = self.clock()
+        delays = [max(1, CONTINUE_INTERVAL - max(0, now - state.get('attempt', 0)))
+                  for kind, state in self.state.items()
+                  if enabled.get(kind) and state.get('continuing')]
+        return min([300] + delays)
 
     def cleanup(self):
         # Give Kodi a full day to release previously published textures before deletion.

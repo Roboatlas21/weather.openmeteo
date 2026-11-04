@@ -79,4 +79,63 @@ class KodiAdapterTests(unittest.TestCase):
         self.assertIn('/1/maps/',str(manager.directory))
 
 
+class ServiceSchedulingTests(unittest.TestCase):
+    def run_service(self, delays, enabled=True):
+        calls, waits = [], []
+        stopped = [False]
+        def wait(seconds):
+            waits.append(seconds)
+            stopped[0] = True
+            return True
+        def weather_main(locid, mode):
+            calls.append((locid, mode))
+            return types.SimpleNamespace(map_retry_delay=delays.get(locid))
+        settings = {'loc1': 'Other', 'loc2': 'Selected', 'alert_interval': 15}
+        utils = types.SimpleNamespace(
+            monitor=types.SimpleNamespace(abortRequested=lambda: stopped[0], waitForAbort=wait),
+            setting=lambda key, *args: settings.get(key, False),
+            settingrpc=lambda key: (
+                ('weather.openmeteo' if enabled else 'another.provider')
+                if key == 'weather.addon' else '2'
+            ),
+            setsetting=lambda *args: None, log=lambda *args: None, geoip=lambda: True,
+            time=types.SimpleNamespace(time=lambda: 1000),
+            lastupdate=lambda key: 0, setupdate=lambda key: None,
+        )
+        config = types.SimpleNamespace(
+            addon=types.SimpleNamespace(maxlocs=3), addon_info='test',
+            init=lambda **kwargs: None,
+        )
+        api = types.SimpleNamespace(migrate_map_cache=lambda: None,
+                                    s=types.SimpleNamespace(close=lambda: None))
+        dependencies = {
+            'lib.weather': types.SimpleNamespace(Main=weather_main),
+            'lib.config': config, 'lib.utils': utils, 'lib.api': api,
+        }
+        spec = importlib.util.spec_from_file_location('lib._service_integration', ROOT/'lib/service.py')
+        module = importlib.util.module_from_spec(spec)
+        # Also replace package attributes if a previous test imported a module.
+        import lib
+        attrs = {name.split('.')[1]: value for name, value in dependencies.items()}
+        with patch.dict(sys.modules, dependencies), patch.multiple(lib, create=True, **attrs):
+            spec.loader.exec_module(module)
+            module.Main()
+        return calls, waits
+
+    def test_backfill_shortens_sleep_and_publishes_selected_location_first(self):
+        calls, waits = self.run_service({'1': 300, '2': 60})
+        self.assertEqual(waits, [60])
+        self.assertEqual(calls[:3], [('2', 'download'), ('2', 'update'), ('1', 'download')])
+
+    def test_completed_or_disabled_maps_keep_normal_service_sleep(self):
+        for delays in ({'1': 300, '2': 300}, {'1': None, '2': None}):
+            with self.subTest(delays=delays):
+                self.assertEqual(self.run_service(delays)[1], [300])
+
+    def test_inactive_weather_provider_never_downloads(self):
+        calls, waits = self.run_service({'2': 60}, enabled=False)
+        self.assertEqual(calls, [])
+        self.assertEqual(waits, [300])
+
+
 if __name__=='__main__':unittest.main()

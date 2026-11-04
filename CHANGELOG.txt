@@ -1,3 +1,11 @@
+v1.0.32 (fork development branch; not an upstream release)
+--------------------------------------------------------
+* Prefer fresh radar over stale or mostly expired animation history
+* Preserve compatible cached frames after a download failure
+* Backfill healthy animations in bounded one-minute service passes
+* Keep outage retry backoff and the shared RainViewer tile rate limit
+* Align test image timestamps with simulated time and cover refresh regressions
+
 v1.0.31 (fork development branch; not an upstream release)
 --------------------------------------------------------
 * Support stock AF3 with embedded legends, a location marker and muted maps
