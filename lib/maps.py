@@ -34,6 +34,17 @@ LAYERS = {
 }
 _METADATA = {}
 
+# RainViewer color scheme 2 (Universal Blue), sampled at exact dBZ values.
+# Both the rain and snow columns match RainViewer's official color-table CSV.
+UNIVERSAL_BLUE_STOPS = (
+    (15, '#88ddee', '#9fdfff'),
+    (25, '#0077aa', '#5f9fff'),
+    (35, '#ffee00', '#3f7fff'),
+    (45, '#ff4400', '#1f5fff'),
+    (55, '#ffaaff', '#003fff'),
+)
+
+
 
 def utc(stamp):
     return datetime.fromtimestamp(stamp, timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -251,15 +262,14 @@ class Maps:
         # https://www.rainviewer.com/files/rainviewer_api_colors_table.csv
         image = Image.new('RGBA', (210, 111), 'white')
         draw = ImageDraw.Draw(image)
-        rain = ['#88ddee', '#0077aa', '#ffee00', '#ff4400', '#ffaaFF']
-        snow = ['#9fdfff', '#5f9fff', '#3f7fff', '#1f5fff', '#003fff']
-        for row, (title, colors) in enumerate([('Rain (dBZ)', rain), ('Snow (dBZ)', snow)]):
+        for row, (title, color_index) in enumerate((('Rain (dBZ)', 1), ('Snow (dBZ)', 2))):
             y = row * 55
             draw.text((3, y), title, font=self.font, fill='black')
-            for i, color in enumerate(colors):
+            for i, stop in enumerate(UNIVERSAL_BLUE_STOPS):
+                dbz, color = stop[0], stop[color_index]
                 x = 4 + i * 40
                 draw.rectangle((x, y + 23, x + 34, y + 33), fill=color)
-                draw.text((x + 2, y + 35), str(15 + i * 10), font=self.font, fill='black')
+                draw.text((x + 2, y + 35), str(dbz), font=self.font, fill='black')
         return image
 
     def wms_image(self, kind, valid, run, style):
