@@ -116,10 +116,13 @@ class MapTests(unittest.TestCase):
     def test_disabled_layer_does_not_force_enabled_layers_to_refresh(self):
         m = self.manager()
         m.refresh({'gctemp': True, 'gcwind': False})
+        # A partial animation should resume in the next service cycle.
+        self.assertFalse(m.state['gctemp']['complete'])
         self.now += 301
         start = len(self.provider.calls)
         self.manager().refresh({'gctemp': True, 'gcwind': False})
-        self.assertEqual(self.provider.calls[start:], [])
+        self.assertTrue(self.provider.calls[start:])
+        self.assertFalse(any('GDPS_15km_Winds_10m' in u for u in self.provider.calls[start:]))
         self.assertNotIn('gcwind', m.state)
 
     def test_history_reduction_clears_every_legacy_slot(self):
@@ -137,10 +140,15 @@ class MapTests(unittest.TestCase):
         m = self.manager()
         m.refresh({'gctemp': True})
         requests = [parse_qs(urlparse(u).query) for u in self.provider.calls if 'REQUEST=GetMap' in u]
-        self.assertEqual(len(requests), 9)
+        self.assertEqual(len(requests), 2)
         self.assertEqual({q['CRS'][0] for q in requests}, {'EPSG:3857'})
         self.assertEqual({q['DIM_REFERENCE_TIME'][0] for q in requests}, {maps.utc(NOW-3600)})
-        self.assertEqual([q['TIME'][0] for q in requests], [maps.utc(NOW+i*10800) for i in range(9)])
+        self.assertEqual([q['TIME'][0] for q in requests], [maps.utc(NOW), maps.utc(NOW+10800)])
+        self.assertFalse(m.state['gctemp']['complete'])
+        for _ in range(4):
+            self.now += 301
+            m.refresh({'gctemp': True})
+        self.assertTrue(m.state['gctemp']['complete'])
         props = self.props(m, {'gctemp': True})
         self.assertIn(str(NOW+86400), props['Map.2.Time.0'])
         self.assertIn(str(NOW), props['Map.2.Time.8'])
@@ -148,14 +156,25 @@ class MapTests(unittest.TestCase):
 
     def test_run_rollover_does_not_mix_models_on_partial_failure(self):
         m = self.manager()
-        m.refresh({'gctemp': True})
-        old = m.state['gctemp']
+        for _ in range(5):
+            m.refresh({'gctemp': True})
+            self.now += 301
+        self.assertTrue(m.state['gctemp']['complete'])
+        old = m.state['gctemp'].copy()
         self.now += 10801
         self.provider.run += 10800
         self.provider.fail = lambda u: 'REQUEST=GetMap' in u and maps.utc(NOW+21600).replace(':', '%3A') in u
         m.refresh({'gctemp': True})
+        # Never replace an existing complete animation with one fresh frame.
+        self.assertEqual(old['run'], m.state['gctemp']['run'])
+        self.assertEqual(old['frames'], m.state['gctemp']['frames'])
+        self.provider.fail = None
+        for _ in range(6):
+            self.now += 301
+            m.refresh({'gctemp': True})
         current = m.state['gctemp']
-        self.assertNotEqual(old['run'], current['run'])
+        self.assertEqual(current['run'], self.provider.run)
+        self.assertTrue(current['complete'])
         self.assertTrue(all('_{}_'.format(current['run']) in f['file'] for f in current['frames']))
 
     def test_canadian_radar_fallback_does_not_mix_providers(self):
@@ -185,12 +204,18 @@ class MapTests(unittest.TestCase):
         self.assertIn('/v2/radar/{}/'.format(NOW), calls[0])
         self.now += 301
         self.provider.fail = None
-        m.refresh({'rvradar': True})
+        for _ in range(6):
+            m.refresh({'rvradar': True})
+            if m.state['rvradar']['complete']:
+                break
+            self.now += 301
         self.assertTrue(m.state['rvradar']['complete'])
 
     def test_stale_radar_hidden_forecast_marked_then_expired(self):
         m = self.manager()
-        m.refresh({'rvradar': True, 'gctemp': True})
+        for _ in range(5):
+            m.refresh({'rvradar': True, 'gctemp': True})
+            self.now += 301
         self.now += 21601
         props = self.props(m, {'rvradar': True, 'gctemp': True})
         self.assertEqual(props['Map.1.Time.0'], 'Unavailable')
@@ -207,7 +232,11 @@ class MapTests(unittest.TestCase):
         self.assertFalse(m.state['gctemp']['complete'])
         self.now += 301
         self.provider.fail = None
-        m.refresh({'gctemp': True})
+        for _ in range(5):
+            m.refresh({'gctemp': True})
+            if m.state['gctemp']['complete']:
+                break
+            self.now += 301
         self.assertTrue(m.state['gctemp']['complete'])
         self.assertNotEqual(first, self.props(m, {'gctemp': True})['Map.2.Layer.0'])
 
@@ -235,6 +264,50 @@ class MapTests(unittest.TestCase):
             maps.atomic(path, fail)
         self.assertEqual(path.read_bytes(), b'previous')
         self.assertEqual(list(path.parent.glob('*.tmp')), [])
+
+
+    def test_universal_blue_legend_matches_rainviewer_reference(self):
+        # 15/25/35/45/55 dBZ, exact RainViewer colour scheme 2 RGB values.
+        self.assertEqual(maps.UNIVERSAL_BLUE_STOPS, (
+            (15, '#88ddee', '#9fdfff'),
+            (25, '#0077aa', '#5f9fff'),
+            (35, '#ffee00', '#3f7fff'),
+            (45, '#ff4400', '#1f5fff'),
+            (55, '#ffaaff', '#003fff'),
+        ))
+        legend = self.manager().rv_legend()
+        self.assertEqual(legend.getpixel((8, 28)), (136, 221, 238, 255))
+        self.assertEqual(legend.getpixel((8, 83)), (159, 223, 255, 255))
+
+    def test_partial_canadian_radar_triggers_fallback(self):
+        m = self.manager(country='CA', history=4)
+        broken = maps.utc(NOW-360).replace(':', '%3A')
+        self.provider.fail = lambda url: (
+            'REQUEST=GetMap' in url and 'Radar_1km_SfcPrecipType' in url
+            and broken in url
+        )
+        m.refresh({'rvradar': True})
+        self.assertTrue(any('weather-maps.json' in u for u in self.provider.calls))
+        self.assertIn('rvradar', m.state)
+        self.assertEqual(m.state['rvradar']['source'], 'RainViewer')
+
+    def test_complete_fallback_retries_preferred_canadian_radar(self):
+        m = self.manager(country='CA', history=4)
+        self.provider.fail = lambda url: (
+            'REQUEST=GetMap' in url and 'Radar_1km_SfcPrecipType' in url
+        )
+        m.refresh({'rvradar': True})
+        self.now += 301
+        m.refresh({'rvradar': True})
+        self.assertEqual(m.state['rvradar']['source'], 'RainViewer')
+        self.assertTrue(m.state['rvradar']['complete'])
+        self.provider.fail = None
+        self.now += 301
+        start = len(self.provider.calls)
+        m.refresh({'rvradar': True})
+        self.assertTrue(any('Radar_1km_SfcPrecipType' in u for u in self.provider.calls[start:]))
+        self.assertEqual(m.state['rvradar']['source'], 'ECCC')
+        self.assertTrue(m.state['rvradar']['complete'])
 
     def test_embedded_legend_and_marker_fit_af3_visible_area(self):
         m = self.manager()
