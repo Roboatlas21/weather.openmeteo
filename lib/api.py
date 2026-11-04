@@ -4,8 +4,6 @@ import socket
 import json
 import requests
 import time
-from collections import deque
-from threading import Lock
 import xbmc
 import xbmcgui
 
@@ -15,6 +13,7 @@ from requests.adapters import HTTPAdapter, Retry
 from . import config
 from . import utils
 from . import weather
+from . import maprate
 
 # DNS cache
 old_getaddrinfo = socket.getaddrinfo
@@ -44,21 +43,9 @@ def network():
 	else:
 		return True
 
-# Keep within the public RainViewer API's announced rate limit.
-# Multiple locations and simultaneous tile workers share this process-wide budget.
-_radar_tile_times = deque()
-_radar_tile_lock = Lock()
-
-
+# Share the allowance with the full-screen window and other Kodi interpreters.
 def _reserve_radar_request():
-    now = time.monotonic()
-    with _radar_tile_lock:
-        while _radar_tile_times and now - _radar_tile_times[0] >= 60:
-            _radar_tile_times.popleft()
-        if len(_radar_tile_times) >= 90:
-            return False
-        _radar_tile_times.append(now)
-        return True
+    return maprate.reserve(config.addon_cache)
 
 
 def migrate_map_cache():

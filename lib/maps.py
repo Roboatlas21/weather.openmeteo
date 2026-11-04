@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 from . import maptiles
 
 SIZE = maptiles.CANVAS_SIZE
@@ -137,15 +137,18 @@ def save_image(path, image):
 class Maps:
     def __init__(self, root, lat, lon, zoom, history=12, radar='auto', country='',
                  muted=True, legends=True, fetch=None, aborted=lambda: False,
-                 log=lambda message: None, font_paths=(), clock=time.time):
+                 log=lambda message: None, font_paths=(), clock=time.time, decorated=True):
         self.lat, self.lon, self.zoom = float(lat), float(lon), max(2, min(10, int(zoom)))
         self.history = max(4, min(24, int(history)))
         self.radar = radar if radar in ('auto', 'rainviewer', 'geomet') else 'auto'
         self.prefer_geomet = self.radar == 'geomet' or (self.radar == 'auto' and country == 'CA')
         self.muted, self.legends = muted, legends
+        self.decorated = decorated
         self.fetch, self.aborted, self.log, self.clock = fetch, aborted, log, clock
         self.x, self.y, self.marker = maptiles.location_tile(self.lat, self.lon, self.zoom)
         key = json.dumps([SCHEMA, self.lat, self.lon, self.zoom, self.prefer_geomet, muted, legends])
+        if not decorated:
+            key += ':fullscreen-v1'
         self.directory = Path(root) / 'maps' / hashlib.sha256(key.encode()).hexdigest()[:16]
         self.directory.mkdir(parents=True, exist_ok=True)
         self.manifest = self.directory / 'state.json'
@@ -208,12 +211,17 @@ class Maps:
         base = Image.new('RGBA', (SIZE, SIZE), '#242b34')
         for (x, y), image in images:
             base.paste(image, ((x - self.x + 1) * 256, (y - self.y + 1) * 256))
-        if self.muted:
+        if not self.decorated:
+            # Invert only luminance: roads/text stay legible on a dark TV map.
+            base = ImageOps.colorize(ImageOps.invert(ImageOps.grayscale(base)),
+                                    '#0d1b27', '#98b9cd').convert('RGBA')
+        elif self.muted:
             base = ImageEnhance.Color(base).enhance(0.35)
             base = ImageEnhance.Brightness(base).enhance(0.78)
-        if self.legends:
+        if self.legends and self.decorated:
             ImageDraw.Draw(base).rectangle((522, 143, 751, 497), fill='white')
-        ImageDraw.Draw(base).rectangle((22, 532, 590, 560), fill='#101820')
+        if self.decorated:
+            ImageDraw.Draw(base).rectangle((22, 532, 590, 560), fill='#101820')
         self.draw_marker(base)
         # Unique paths also invalidate Kodi's texture cache after weekly renewal.
         name = 'osm_{}.png'.format(int(self.clock()))
@@ -243,6 +251,9 @@ class Maps:
     def annotate(self, image, legend=None, source='ECCC'):
         """Draw inside stock AF3's crop/header/footer safe area (y=130..560)."""
         image = image.copy()
+        if not self.decorated:
+            self.draw_marker(image)
+            return image
         draw = ImageDraw.Draw(image)
         if self.legends and legend is not None:
             legend = legend.copy()

@@ -1,0 +1,1623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<window>
+  <defaultcontrol always="true">100</defaultcontrol>
+  <allowoverlay>no</allowoverlay>
+  <coordinates>
+    <system>1</system>
+    <origin x="0" y="0" />
+  </coordinates>
+  <controls>
+    <control type="image" id="1">
+      <left>0</left>
+      <top>0</top>
+      <width>1920</width>
+      <height>1080</height>
+      <aspectratio>stretch</aspectratio>
+      <texture>background.png</texture>
+    </control>
+    <control type="group">
+      <visible>String.IsEqual(Window.Property(Weather.View),maps)</visible>
+      <control type="image" id="2">
+        <left>0</left>
+        <top>125</top>
+        <width>1920</width>
+        <height>880</height>
+        <aspectratio>scale</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Base)]</texture>
+      </control>
+      <control type="image" id="3">
+        <left>0</left>
+        <top>125</top>
+        <width>1920</width>
+        <height>880</height>
+        <aspectratio>scale</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Image)]</texture>
+        <colordiffuse>CCFFFFFF</colordiffuse>
+      </control>
+      <control type="image">
+        <left>55</left>
+        <top>158</top>
+        <width>365</width>
+        <height>545</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>panel.png</texture>
+      </control>
+      <control type="label">
+        <left>80</left>
+        <top>174</top>
+        <width>310</width>
+        <height>45</height>
+        <label>$ADDON[weather.openmeteo 32746]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="button" id="200">
+        <left>70</left>
+        <top>234</top>
+        <width>335</width>
+        <height>62</height>
+        <label>$ADDON[weather.openmeteo 32730]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>200</onleft>
+        <onright>224</onright>
+        <onup>14</onup>
+        <ondown>201</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="201">
+        <left>70</left>
+        <top>303</top>
+        <width>335</width>
+        <height>62</height>
+        <label>$ADDON[weather.openmeteo 32731]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>201</onleft>
+        <onright>224</onright>
+        <onup>200</onup>
+        <ondown>202</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="202">
+        <left>70</left>
+        <top>372</top>
+        <width>335</width>
+        <height>62</height>
+        <label>$ADDON[weather.openmeteo 32732]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>202</onleft>
+        <onright>224</onright>
+        <onup>201</onup>
+        <ondown>203</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="203">
+        <left>70</left>
+        <top>441</top>
+        <width>335</width>
+        <height>62</height>
+        <label>$ADDON[weather.openmeteo 32733]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>203</onleft>
+        <onright>224</onright>
+        <onup>202</onup>
+        <ondown>204</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="204">
+        <left>70</left>
+        <top>510</top>
+        <width>335</width>
+        <height>62</height>
+        <label>$ADDON[weather.openmeteo 32734]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>204</onleft>
+        <onright>224</onright>
+        <onup>203</onup>
+        <ondown>210</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="210">
+        <left>70</left>
+        <top>616</top>
+        <width>160</width>
+        <height>65</height>
+        <label>$ADDON[weather.openmeteo 32735]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>211</onleft>
+        <onright>211</onright>
+        <onup>204</onup>
+        <ondown>220</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="211">
+        <left>239</left>
+        <top>616</top>
+        <width>166</width>
+        <height>65</height>
+        <label>$ADDON[weather.openmeteo 32736]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>210</onleft>
+        <onright>221</onright>
+        <onup>204</onup>
+        <ondown>220</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="image">
+        <left>1575</left>
+        <top>160</top>
+        <width>300</width>
+        <height>105</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>panel.png</texture>
+      </control>
+      <control type="label">
+        <left>1590</left>
+        <top>170</top>
+        <width>270</width>
+        <height>45</height>
+        <label>$INFO[Window.Property(Weather.Map.Time)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="label">
+        <left>1590</left>
+        <top>215</top>
+        <width>270</width>
+        <height>32</height>
+        <label>$INFO[Window.Property(Weather.Map.Units)]</label>
+        <font>font12</font>
+        <textcolor>FF93B7CD</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="button" id="224">
+        <left>1575</left>
+        <top>280</top>
+        <width>300</width>
+        <height>58</height>
+        <label>$ADDON[weather.openmeteo 32747]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>200</onleft>
+        <onright>221</onright>
+        <onup>14</onup>
+        <ondown>221</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="image">
+        <left>1630</left>
+        <top>350</top>
+        <width>245</width>
+        <height>400</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Legend)]</texture>
+      </control>
+      <control type="label">
+        <left>455</left>
+        <top>395</top>
+        <width>1090</width>
+        <height>120</height>
+        <label>$INFO[Window.Property(Weather.Map.Status)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+        <wrapmultiline>true</wrapmultiline>
+      </control>
+      <control type="image">
+        <left>100</left>
+        <top>876</top>
+        <width>1720</width>
+        <height>125</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>panel.png</texture>
+      </control>
+      <control type="button" id="220">
+        <left>115</left>
+        <top>894</top>
+        <width>180</width>
+        <height>86</height>
+        <label>$ADDON[weather.openmeteo 32726]</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>223</onleft>
+        <onright>221</onright>
+        <onup>210</onup>
+        <ondown>14</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="221">
+        <left>310</left>
+        <top>891</top>
+        <width>1190</width>
+        <height>92</height>
+        <label />
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>221</onleft>
+        <onright>221</onright>
+        <onup>200</onup>
+        <ondown>14</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="label">
+        <left>340</left>
+        <top>901</top>
+        <width>1110</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Map.Range)]</label>
+        <font>font12</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="progress" id="225">
+        <left>340</left>
+        <top>958</top>
+        <width>1080</width>
+        <height>8</height>
+        <texturebg>line.png</texturebg>
+        <lefttexture>progress.png</lefttexture>
+        <midtexture>progress.png</midtexture>
+        <righttexture>progress.png</righttexture>
+        <overlaytexture>transparent.png</overlaytexture>
+      </control>
+      <control type="button" id="222">
+        <left>1515</left>
+        <top>894</top>
+        <width>95</width>
+        <height>86</height>
+        <label>‹</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>221</onleft>
+        <onright>223</onright>
+        <onup>211</onup>
+        <ondown>14</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="button" id="223">
+        <left>1620</left>
+        <top>894</top>
+        <width>95</width>
+        <height>86</height>
+        <label>›</label>
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>222</onleft>
+        <onright>220</onright>
+        <onup>211</onup>
+        <ondown>14</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="label">
+        <left>1720</left>
+        <top>906</top>
+        <width>90</width>
+        <height>60</height>
+        <label>$INFO[Window.Property(Weather.Map.Count)]</label>
+        <font>font12</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+    </control>
+    <control type="image">
+      <left>0</left>
+      <top>0</top>
+      <width>1920</width>
+      <height>128</height>
+      <aspectratio>stretch</aspectratio>
+      <texture>header.png</texture>
+    </control>
+    <control type="button" id="10">
+      <left>60</left>
+      <top>25</top>
+      <width>840</width>
+      <height>85</height>
+      <label>$INFO[Window.Property(Weather.Location)]  ▾</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>14</onleft>
+      <onright>11</onright>
+      <onup>15</onup>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(100)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),hourly)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),daily)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),maps)">SetFocus(200)</ondown>
+    </control>
+    <control type="button" id="11">
+      <left>970</left>
+      <top>38</top>
+      <width>220</width>
+      <height>64</height>
+      <label>$ADDON[weather.openmeteo 32701]</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>10</onleft>
+      <onright>12</onright>
+      <onup>11</onup>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(100)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),hourly)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),daily)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),maps)">SetFocus(200)</ondown>
+    </control>
+    <control type="button" id="12">
+      <left>1200</left>
+      <top>38</top>
+      <width>170</width>
+      <height>64</height>
+      <label>$ADDON[weather.openmeteo 32702]</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>11</onleft>
+      <onright>13</onright>
+      <onup>12</onup>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(100)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),hourly)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),daily)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),maps)">SetFocus(200)</ondown>
+    </control>
+    <control type="button" id="13">
+      <left>1380</left>
+      <top>38</top>
+      <width>190</width>
+      <height>64</height>
+      <label>$ADDON[weather.openmeteo 32703]</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>12</onleft>
+      <onright>14</onright>
+      <onup>13</onup>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(100)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),hourly)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),daily)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),maps)">SetFocus(200)</ondown>
+    </control>
+    <control type="button" id="14">
+      <left>1580</left>
+      <top>38</top>
+      <width>165</width>
+      <height>64</height>
+      <label>$ADDON[weather.openmeteo 32704]</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>13</onleft>
+      <onright>11</onright>
+      <onup>14</onup>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(100)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),hourly)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),daily)">SetFocus(300)</ondown>
+      <ondown condition="String.IsEqual(Window.Property(Weather.View),maps)">SetFocus(200)</ondown>
+    </control>
+    <control type="label" id="40">
+      <left>1750</left>
+      <top>45</top>
+      <width>125</width>
+      <height>48</height>
+      <label>$INFO[Window.Property(Weather.Clock)]</label>
+      <font>font14</font>
+      <textcolor>FFF2F6FA</textcolor>
+      <aligny>center</aligny>
+      <align>right</align>
+    </control>
+    <control type="group">
+      <visible>String.IsEqual(Window.Property(Weather.View),overview)</visible>
+      <control type="label">
+        <left>76</left>
+        <top>140</top>
+        <width>700</width>
+        <height>40</height>
+        <label>$ADDON[weather.openmeteo 32700]</label>
+        <font>font12</font>
+        <textcolor>FF93B7CD</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label" id="50">
+        <left>68</left>
+        <top>184</top>
+        <width>520</width>
+        <height>175</height>
+        <label>$INFO[Window.Property(Weather.Temp)]</label>
+        <font>font60</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>620</left>
+        <top>165</top>
+        <width>240</width>
+        <height>200</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Icon)]</texture>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>365</top>
+        <width>820</width>
+        <height>65</height>
+        <label>$INFO[Window.Property(Weather.Condition)]</label>
+        <font>font45</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>431</top>
+        <width>820</width>
+        <height>44</height>
+        <label>$ADDON[weather.openmeteo 32715] $INFO[Window.Property(Weather.Feels)]   $INFO[Window.Property(Weather.Range)]</label>
+        <font>font14</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>485</top>
+        <width>820</width>
+        <height>50</height>
+        <label>$INFO[Window.Property(Weather.Later)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>555</top>
+        <width>260</width>
+        <height>32</height>
+        <label>$ADDON[weather.openmeteo 32709]</label>
+        <font>font12</font>
+        <textcolor>FF8DAEC4</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>590</top>
+        <width>260</width>
+        <height>45</height>
+        <label>$INFO[Window.Property(Weather.Wind)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>360</left>
+        <top>555</top>
+        <width>260</width>
+        <height>32</height>
+        <label>$ADDON[weather.openmeteo 32710]</label>
+        <font>font12</font>
+        <textcolor>FF8DAEC4</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>360</left>
+        <top>590</top>
+        <width>260</width>
+        <height>45</height>
+        <label>$INFO[Window.Property(Weather.Humidity)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>650</left>
+        <top>555</top>
+        <width>260</width>
+        <height>32</height>
+        <label>$ADDON[weather.openmeteo 32717]</label>
+        <font>font12</font>
+        <textcolor>FF8DAEC4</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>650</left>
+        <top>590</top>
+        <width>260</width>
+        <height>45</height>
+        <label>$INFO[Window.Property(Weather.Sunset)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>985</left>
+        <top>156</top>
+        <width>865</width>
+        <height>440</height>
+        <aspectratio>scale</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Base)]</texture>
+      </control>
+      <control type="image">
+        <left>985</left>
+        <top>156</top>
+        <width>865</width>
+        <height>440</height>
+        <aspectratio>scale</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Image)]</texture>
+        <colordiffuse>CCFFFFFF</colordiffuse>
+      </control>
+      <control type="image">
+        <left>985</left>
+        <top>156</top>
+        <width>865</width>
+        <height>58</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>panel.png</texture>
+      </control>
+      <control type="label">
+        <left>1010</left>
+        <top>164</top>
+        <width>420</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Map.Heading)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1440</left>
+        <top>165</top>
+        <width>385</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Map.Time)]</label>
+        <font>font12</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>right</align>
+      </control>
+      <control type="image">
+        <left>985</left>
+        <top>544</top>
+        <width>865</width>
+        <height>52</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>panel.png</texture>
+      </control>
+      <control type="label">
+        <left>1000</left>
+        <top>546</top>
+        <width>830</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32705]  →</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="label">
+        <left>1000</left>
+        <top>300</top>
+        <width>830</width>
+        <height>100</height>
+        <label>$INFO[Window.Property(Weather.Map.Status)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+        <wrapmultiline>true</wrapmultiline>
+      </control>
+      <control type="button" id="100">
+        <left>980</left>
+        <top>151</top>
+        <width>875</width>
+        <height>450</height>
+        <label />
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>10</onleft>
+        <onright>14</onright>
+        <onup>14</onup>
+        <ondown>101</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="label">
+        <left>985</left>
+        <top>609</top>
+        <width>865</width>
+        <height>32</height>
+        <label>$INFO[Window.Property(Weather.Map.Source)]</label>
+        <font>font10</font>
+        <textcolor>FF9DB8C9</textcolor>
+        <aligny>center</aligny>
+        <align>right</align>
+      </control>
+      <control type="label">
+        <left>76</left>
+        <top>647</top>
+        <width>700</width>
+        <height>45</height>
+        <label>$ADDON[weather.openmeteo 32707]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>87</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.0.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>92</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.0.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>180</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.0.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>180</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.0.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>339</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.1.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>344</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.1.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>432</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.1.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>432</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.1.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>591</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.2.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>596</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.2.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>684</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.2.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>684</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.2.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>843</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.3.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>848</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.3.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>936</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.3.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>936</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.3.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1095</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.4.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>1100</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.4.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1188</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.4.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1188</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.4.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1347</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.5.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>1352</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.5.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1440</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.5.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1440</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.5.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1599</left>
+        <top>699</top>
+        <width>220</width>
+        <height>40</height>
+        <label>$INFO[Window.Property(Weather.Hour.6.time)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="image">
+        <left>1604</left>
+        <top>750</top>
+        <width>82</width>
+        <height>73</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Hour.6.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1692</left>
+        <top>744</top>
+        <width>126</width>
+        <height>44</height>
+        <label>$INFO[Window.Property(Weather.Hour.6.temp)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1692</left>
+        <top>791</top>
+        <width>126</width>
+        <height>35</height>
+        <label>$INFO[Window.Property(Weather.Hour.6.rain)]</label>
+        <font>font12</font>
+        <textcolor>FF80D7FF</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="button" id="101">
+        <left>65</left>
+        <top>692</top>
+        <width>1790</width>
+        <height>145</height>
+        <label />
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>101</onleft>
+        <onright>101</onright>
+        <onup>100</onup>
+        <ondown>102</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+      <control type="image">
+        <left>76</left>
+        <top>854</top>
+        <width>1768</width>
+        <height>2</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>line.png</texture>
+      </control>
+      <control type="image">
+        <left>88</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.0.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>178</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.0.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>178</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.0.high)] / $INFO[Window.Property(Weather.Day.0.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>340</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.1.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>430</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.1.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>430</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.1.high)] / $INFO[Window.Property(Weather.Day.1.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>592</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.2.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>682</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.2.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>682</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.2.high)] / $INFO[Window.Property(Weather.Day.2.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>844</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.3.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>934</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.3.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>934</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.3.high)] / $INFO[Window.Property(Weather.Day.3.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>1096</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.4.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1186</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.4.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1186</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.4.high)] / $INFO[Window.Property(Weather.Day.4.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>1348</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.5.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1438</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.5.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1438</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.5.high)] / $INFO[Window.Property(Weather.Day.5.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="image">
+        <left>1600</left>
+        <top>881</top>
+        <width>80</width>
+        <height>80</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Day.6.icon)]</texture>
+      </control>
+      <control type="label">
+        <left>1690</left>
+        <top>878</top>
+        <width>145</width>
+        <height>42</height>
+        <label>$INFO[Window.Property(Weather.Day.6.day)]</label>
+        <font>font13</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1690</left>
+        <top>923</top>
+        <width>145</width>
+        <height>38</height>
+        <label>$INFO[Window.Property(Weather.Day.6.high)] / $INFO[Window.Property(Weather.Day.6.low)]</label>
+        <font>font12</font>
+        <textcolor>FFB4C8D5</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="button" id="102">
+        <left>65</left>
+        <top>870</top>
+        <width>1790</width>
+        <height>110</height>
+        <label />
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>102</onleft>
+        <onright>102</onright>
+        <onup>101</onup>
+        <ondown>15</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+    </control>
+    <control type="group">
+      <visible>String.IsEqual(Window.Property(Weather.View),hourly) | String.IsEqual(Window.Property(Weather.View),daily)</visible>
+      <control type="label">
+        <left>76</left>
+        <top>153</top>
+        <width>900</width>
+        <height>66</height>
+        <label>$INFO[Window.Property(Weather.Heading)]</label>
+        <font>font45</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>90</left>
+        <top>239</top>
+        <width>270</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32742]</label>
+        <font>font13</font>
+        <textcolor>FF90B5CB</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>390</left>
+        <top>239</top>
+        <width>500</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32744]</label>
+        <font>font13</font>
+        <textcolor>FF90B5CB</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>940</left>
+        <top>239</top>
+        <width>290</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32731]</label>
+        <font>font13</font>
+        <textcolor>FF90B5CB</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1275</left>
+        <top>239</top>
+        <width>240</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32745]</label>
+        <font>font13</font>
+        <textcolor>FF90B5CB</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="label">
+        <left>1550</left>
+        <top>239</top>
+        <width>280</width>
+        <height>48</height>
+        <label>$ADDON[weather.openmeteo 32709]</label>
+        <font>font13</font>
+        <textcolor>FF90B5CB</textcolor>
+        <aligny>center</aligny>
+      </control>
+      <control type="list" id="300">
+        <left>65</left>
+        <top>300</top>
+        <width>1790</width>
+        <height>675</height>
+        <onleft>11</onleft>
+        <onright>14</onright>
+        <onup>12</onup>
+        <ondown>15</ondown>
+        <pagecontrol>310</pagecontrol>
+        <scrolltime>180</scrolltime>
+        <orientation>vertical</orientation>
+        <itemlayout height="84" width="1790">
+          <control type="image">
+            <left>0</left>
+            <top>0</top>
+            <width>1790</width>
+            <height>82</height>
+            <aspectratio>stretch</aspectratio>
+            <texture>row.png</texture>
+          </control>
+          <control type="label">
+            <left>25</left>
+            <top>8</top>
+            <width>280</width>
+            <height>40</height>
+            <label>$INFO[ListItem.Property(rowdate)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>25</left>
+            <top>44</top>
+            <width>280</width>
+            <height>32</height>
+            <label>$INFO[ListItem.Property(rowtime)]</label>
+            <font>font10</font>
+            <textcolor>FF9DB8C9</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="image">
+            <left>315</left>
+            <top>9</top>
+            <width>65</width>
+            <height>65</height>
+            <aspectratio>keep</aspectratio>
+            <texture>$INFO[ListItem.Art(icon)]</texture>
+          </control>
+          <control type="label">
+            <left>395</left>
+            <top>8</top>
+            <width>470</width>
+            <height>40</height>
+            <label>$INFO[ListItem.Property(condition)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>395</left>
+            <top>44</top>
+            <width>470</width>
+            <height>32</height>
+            <label>$INFO[ListItem.Property(detail)]</label>
+            <font>font10</font>
+            <textcolor>FF9DB8C9</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>875</left>
+            <top>12</top>
+            <width>310</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(temperature)]</label>
+            <font>font14</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>1210</left>
+            <top>12</top>
+            <width>220</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(rain)]</label>
+            <font>font14</font>
+            <textcolor>FF80D7FF</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>1485</left>
+            <top>12</top>
+            <width>285</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(wind)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+        </itemlayout>
+        <focusedlayout height="84" width="1790">
+          <control type="image">
+            <left>0</left>
+            <top>0</top>
+            <width>1790</width>
+            <height>82</height>
+            <aspectratio>stretch</aspectratio>
+            <texture>row-focus.png</texture>
+          </control>
+          <control type="label">
+            <left>25</left>
+            <top>8</top>
+            <width>280</width>
+            <height>40</height>
+            <label>$INFO[ListItem.Property(rowdate)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>25</left>
+            <top>44</top>
+            <width>280</width>
+            <height>32</height>
+            <label>$INFO[ListItem.Property(rowtime)]</label>
+            <font>font10</font>
+            <textcolor>FF9DB8C9</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="image">
+            <left>315</left>
+            <top>9</top>
+            <width>65</width>
+            <height>65</height>
+            <aspectratio>keep</aspectratio>
+            <texture>$INFO[ListItem.Art(icon)]</texture>
+          </control>
+          <control type="label">
+            <left>395</left>
+            <top>8</top>
+            <width>470</width>
+            <height>40</height>
+            <label>$INFO[ListItem.Property(condition)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>395</left>
+            <top>44</top>
+            <width>470</width>
+            <height>32</height>
+            <label>$INFO[ListItem.Property(detail)]</label>
+            <font>font10</font>
+            <textcolor>FF9DB8C9</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>875</left>
+            <top>12</top>
+            <width>310</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(temperature)]</label>
+            <font>font14</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>1210</left>
+            <top>12</top>
+            <width>220</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(rain)]</label>
+            <font>font14</font>
+            <textcolor>FF80D7FF</textcolor>
+            <aligny>center</aligny>
+          </control>
+          <control type="label">
+            <left>1485</left>
+            <top>12</top>
+            <width>285</width>
+            <height>58</height>
+            <label>$INFO[ListItem.Property(wind)]</label>
+            <font>font13</font>
+            <textcolor>FFF2F6FA</textcolor>
+            <aligny>center</aligny>
+          </control>
+        </focusedlayout>
+      </control>
+      <control type="label">
+        <left>100</left>
+        <top>480</top>
+        <width>1720</width>
+        <height>120</height>
+        <label>$INFO[Window.Property(Weather.Empty)]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="scrollbar" id="310">
+        <left>1867</left>
+        <top>300</top>
+        <width>9</width>
+        <height>675</height>
+        <texturesliderbackground>row.png</texturesliderbackground>
+        <texturesliderbar>line.png</texturesliderbar>
+        <texturesliderbarfocus>line.png</texturesliderbarfocus>
+        <textureslidernib>line.png</textureslidernib>
+        <textureslidernibfocus>line.png</textureslidernibfocus>
+        <orientation>vertical</orientation>
+        <showonepage>false</showonepage>
+      </control>
+    </control>
+    <control type="group">
+      <visible>String.IsEqual(Window.Property(Weather.View),maps) + String.IsEqual(Window.Property(Weather.LegendExpanded),true)</visible>
+      <control type="image">
+        <left>0</left>
+        <top>128</top>
+        <width>1920</width>
+        <height>880</height>
+        <aspectratio>stretch</aspectratio>
+        <texture>header.png</texture>
+      </control>
+      <control type="image">
+        <left>540</left>
+        <top>190</top>
+        <width>840</width>
+        <height>780</height>
+        <aspectratio>keep</aspectratio>
+        <texture>$INFO[Window.Property(Weather.Map.Legend)]</texture>
+      </control>
+      <control type="label">
+        <left>440</left>
+        <top>135</top>
+        <width>1040</width>
+        <height>50</height>
+        <label>$ADDON[weather.openmeteo 32748]</label>
+        <font>font14</font>
+        <textcolor>FFF2F6FA</textcolor>
+        <aligny>center</aligny>
+        <align>center</align>
+      </control>
+      <control type="button" id="240">
+        <left>400</left>
+        <top>135</top>
+        <width>1120</width>
+        <height>850</height>
+        <label />
+        <font>font13</font>
+        <textcolor>FFF0F7FC</textcolor>
+        <focusedcolor>FFFFFFFF</focusedcolor>
+        <align>center</align>
+        <aligny>center</aligny>
+        <onleft>240</onleft>
+        <onright>240</onright>
+        <onup>240</onup>
+        <ondown>240</ondown>
+        <texturenofocus>transparent.png</texturenofocus>
+        <texturefocus border="12">focus.png</texturefocus>
+      </control>
+    </control>
+    <control type="image">
+      <left>0</left>
+      <top>1012</top>
+      <width>1920</width>
+      <height>68</height>
+      <aspectratio>stretch</aspectratio>
+      <texture>header.png</texture>
+    </control>
+    <control type="label">
+      <left>76</left>
+      <top>1025</top>
+      <width>920</width>
+      <height>42</height>
+      <label>$INFO[Window.Property(Weather.Hint)]</label>
+      <font>font12</font>
+      <textcolor>FFB4C8D5</textcolor>
+      <aligny>center</aligny>
+    </control>
+    <control type="label">
+      <left>1020</left>
+      <top>1025</top>
+      <width>820</width>
+      <height>42</height>
+      <label>$INFO[Window.Property(Weather.Map.Source)]</label>
+      <font>font10</font>
+      <textcolor>FF9DB8C9</textcolor>
+      <aligny>center</aligny>
+      <align>right</align>
+      <visible>String.IsEqual(Window.Property(Weather.View),maps)</visible>
+    </control>
+    <control type="label">
+      <left>1050</left>
+      <top>1025</top>
+      <width>560</width>
+      <height>42</height>
+      <label>$INFO[Window.Property(Weather.Status)]</label>
+      <font>font10</font>
+      <textcolor>FF9DB8C9</textcolor>
+      <aligny>center</aligny>
+      <align>right</align>
+      <visible>!String.IsEqual(Window.Property(Weather.View),maps)</visible>
+    </control>
+    <control type="button" id="15">
+      <left>1640</left>
+      <top>1020</top>
+      <width>200</width>
+      <height>52</height>
+      <label>$ADDON[weather.openmeteo 32711]</label>
+      <font>font13</font>
+      <textcolor>FFF0F7FC</textcolor>
+      <focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align>
+      <aligny>center</aligny>
+      <onleft>102</onleft>
+      <onright>10</onright>
+      <ondown>10</ondown>
+      <texturenofocus>transparent.png</texturenofocus>
+      <texturefocus border="12">focus.png</texturefocus>
+      <visible>!String.IsEqual(Window.Property(Weather.View),maps)</visible>
+      <onup condition="String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(102)</onup>
+      <onup condition="!String.IsEqual(Window.Property(Weather.View),overview)">SetFocus(300)</onup>
+    </control>
+  </controls>
+</window>

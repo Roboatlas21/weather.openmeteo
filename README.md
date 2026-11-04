@@ -17,6 +17,8 @@
 - Pollen: Alder, Birch, Grass, ... (Requires skin support, Europe only)
 - Sun and moon data (Requires skin support)
 - Weather alert notifications
+- Dedicated full-screen weather window with current conditions, hourly forecast, ten days and animated maps.
+- Executable widget entries open the full-screen window from stock AF3, with remote navigation and no skin patches.
 - Weather alert properties for skins (Requires skin support)
 - Graphs (Requires skin support)
 Special window properties that can be used for graphs
@@ -51,8 +53,54 @@ replace stale history immediately. Forecast model runs remain separate, with a u
 previous animation retained while its replacement fills. RainViewer's Universal Blue
 legend uses the provider's published rain/snow dBZ colour table.
 
+### Full-screen weather (1.1.0)
+
+Open **Add-ons → Program add-ons → Open-Meteo** and select **Overview** if Kodi
+shows the four launch entries. The window has Overview, Hourly, 10 days and Maps pages. It uses your saved locations and forecast unit settings.
+Maps must be enabled for the location and layer in Open-Meteo settings.
+
+For a stock AF3 widget, select the **Open-Meteo** program plugin as the widget
+source. Its Overview, Hourly, 10 days and Maps entries open the corresponding
+full-screen page when selected. The plugin directory is `plugin://weather.openmeteo/`.
+You can also add the program add-on to Kodi Favourites, or use these custom actions
+where your shortcut editor supports Kodi built-ins:
+
+```
+RunScript(weather.openmeteo)
+RunScript(weather.openmeteo,view=maps)
+```
+
+The plugin source accepts `?location=2` to pin its entries to a saved location slot;
+otherwise the window starts with Kodi's selected weather location. Changing location
+inside this window does not change Kodi's weather location.
+
+- **Arrows / OK:** navigate tabs, forecast rows, layers and the location selector.
+- **Maps:** Local and Regional change the coverage. Focus the timeline and press
+  Left / Right to step through frames; manual stepping pauses playback.
+- **Play / Pause:** use the on-screen button, OK on the timeline, or the remote's
+  Play / Pause key. Expand legend makes the provider's colour key easier to read.
+- **Back:** closes the expanded legend first, then returns to Overview, then closes
+  the window and returns to the screen that opened it.
+
+The full-screen map has its own dark background, separate legend and frame timestamp.
+Temperature and wind legends retain the provider's °C and km/h units. Radar shows
+past observations; the other layers show forecast times. Loading, disabled and cached
+states are labelled. Forecast dates and times use the selected location's time zone.
+The hourly page covers approximately the next 48 hours; the overview shows the current
+hour and the next six hours. Map animations fill gradually under the existing bounded
+download policy.
+
+The window downloads data on one background worker and uses an independent map cache.
+The weather service and window share the RainViewer tile allowance. The existing AF3
+weather page continues to receive its original decorated map images. Close and reopen
+the window after changing add-on settings.
+
 ### Validation
 
-With Python 3 and Pillow installed, run `python -m unittest discover -s tests -v`.
+With Python 3, Pillow, Requests and pytz installed, run `python -m unittest discover -s tests -v`.
 Tests use generated PNG fixtures and fake provider responses; they do not require Kodi
 or internet access. Device rendering still needs validation on the target Kodi installation.
+The full-screen tests cover forecast dates, missing values, playback, location changes,
+widget launch arguments, Back navigation, map isolation and the shared tile allowance.
+The native XML and bundled textures can be regenerated with `python tools/build_dashboard_skin.py`
+(the development machine needs DejaVu Sans; Kodi uses the active skin's fonts).

@@ -1,3 +1,12 @@
+v1.1.0 (fork development branch; not an upstream release)
+--------------------------------------------------------
+* Add a dedicated full-screen Overview, Hourly, 10-day and Maps window
+* Add executable widget entries and a program entry for stock AF3
+* Navigate locations, map layers, local/regional views and radar playback by remote
+* Load real forecasts asynchronously with location-local timestamps and user units
+* Keep full-screen imagery separate from the existing stock-skin Map.* contract
+* Share RainViewer request limits between the service and full-screen window
+
 v1.0.32 (fork development branch; not an upstream release)
 --------------------------------------------------------
 * Prefer fresh radar over stale or mostly expired animation history

@@ -815,3 +815,199 @@ msgstr ""
 msgctxt "#32611"
 msgid "Maximum number of frames in each animation. Environment Canada radar supports up to 24; RainViewer up to 12. Forecast maps show up to nine times across the next 24 hours."
 msgstr ""
+
+msgctxt "#32700"
+msgid "Weather"
+msgstr ""
+
+msgctxt "#32701"
+msgid "Overview"
+msgstr ""
+
+msgctxt "#32702"
+msgid "Hourly"
+msgstr ""
+
+msgctxt "#32703"
+msgid "10 days"
+msgstr ""
+
+msgctxt "#32704"
+msgid "Maps"
+msgstr ""
+
+msgctxt "#32705"
+msgid "Open maps"
+msgstr ""
+
+msgctxt "#32706"
+msgid "Choose location"
+msgstr ""
+
+msgctxt "#32707"
+msgid "Next 6 hours"
+msgstr ""
+
+msgctxt "#32708"
+msgid "Upcoming days"
+msgstr ""
+
+msgctxt "#32709"
+msgid "Wind"
+msgstr ""
+
+msgctxt "#32710"
+msgid "Humidity"
+msgstr ""
+
+msgctxt "#32711"
+msgid "About / help"
+msgstr ""
+
+msgctxt "#32712"
+msgid "Arrows  Navigate     OK  Open     Back  Return"
+msgstr ""
+
+msgctxt "#32713"
+msgid "OK  Play / pause     ◀ ▶  Step timeline     Back  Overview"
+msgstr ""
+
+msgctxt "#32714"
+msgid "Later:"
+msgstr ""
+
+msgctxt "#32715"
+msgid "Feels like"
+msgstr ""
+
+msgctxt "#32716"
+msgid "Sunrise"
+msgstr ""
+
+msgctxt "#32717"
+msgid "Sunset"
+msgstr ""
+
+msgctxt "#32718"
+msgid "High"
+msgstr ""
+
+msgctxt "#32719"
+msgid "Low"
+msgstr ""
+
+msgctxt "#32720"
+msgid "Loading weather…"
+msgstr ""
+
+msgctxt "#32721"
+msgid "Forecast unavailable. Check your connection and location settings."
+msgstr ""
+
+msgctxt "#32722"
+msgid "Cached"
+msgstr ""
+
+msgctxt "#32723"
+msgid "Updated"
+msgstr ""
+
+msgctxt "#32724"
+msgid "Maps or this layer are disabled. Enable them in Open-Meteo settings, then reopen this window."
+msgstr ""
+
+msgctxt "#32725"
+msgid "Unavailable"
+msgstr ""
+
+msgctxt "#32726"
+msgid "Pause"
+msgstr ""
+
+msgctxt "#32727"
+msgid "Play"
+msgstr ""
+
+msgctxt "#32728"
+msgid "Use arrows and OK to navigate. Choose a location from the top-left button. On Maps, select a layer or Local / Regional, then focus the timeline to step through frames. Back returns to Overview, then to your previous screen. Add the Open-Meteo plugin entries to an AF3 widget, or add the program add-on to Favourites. Forecast units follow your settings; map legends show the provider units."
+msgstr ""
+
+msgctxt "#32729"
+msgid "Add a weather location in Open-Meteo settings first."
+msgstr ""
+
+msgctxt "#32730"
+msgid "Radar"
+msgstr ""
+
+msgctxt "#32731"
+msgid "Temperature"
+msgstr ""
+
+msgctxt "#32732"
+msgid "Wind"
+msgstr ""
+
+msgctxt "#32733"
+msgid "Cloud cover"
+msgstr ""
+
+msgctxt "#32734"
+msgid "Precipitation type"
+msgstr ""
+
+msgctxt "#32735"
+msgid "Local"
+msgstr ""
+
+msgctxt "#32736"
+msgid "Regional"
+msgstr ""
+
+msgctxt "#32737"
+msgid "Observations"
+msgstr ""
+
+msgctxt "#32738"
+msgid "Forecast"
+msgstr ""
+
+msgctxt "#32739"
+msgid "Legend unavailable"
+msgstr ""
+
+msgctxt "#32740"
+msgid "Environment Canada"
+msgstr ""
+
+msgctxt "#32741"
+msgid "Forecast: Open-Meteo"
+msgstr ""
+
+msgctxt "#32742"
+msgid "Time / day"
+msgstr ""
+
+msgctxt "#32743"
+msgid "Weather maps"
+msgstr ""
+
+msgctxt "#32744"
+msgid "Conditions"
+msgstr ""
+
+msgctxt "#32745"
+msgid "Precip. chance"
+msgstr ""
+
+msgctxt "#32746"
+msgid "Layers"
+msgstr ""
+
+msgctxt "#32747"
+msgid "Expand legend"
+msgstr ""
+
+msgctxt "#32748"
+msgid "Legend — OK or Back to return"
+msgstr ""
