@@ -39,7 +39,12 @@ Changing zoom or map appearance creates a new cache. A loading message appears u
 that view has a complete background and imagery. The selected location is downloaded and
 published before other saved locations. The service checks every five minutes; complete
 radar is refreshed after ten minutes and forecasts after three hours. Failed layers retry
-independently. RainViewer request limits can require another cycle to fill older frames.
+independently. Initial downloads are deliberately bounded (two new frames per forecast
+layer and three or four new radar frames per pass). Available near-term weather appears
+first, and additional animation frames fill in during subsequent five-minute cycles.
+During a model run change or radar source fallback, the previous complete animation
+remains visible until a complete replacement has been downloaded. RainViewer's
+Universal Blue legend uses the provider's published rain/snow dBZ colour table.
 
 ### Validation
 
