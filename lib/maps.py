@@ -25,6 +25,7 @@ SIZE = maptiles.CANVAS_SIZE
 SCHEMA = 4
 HISTORY_SLOTS = 48  # Clear slots left by older versions/settings; stock AF3 reads 24.
 CONTINUE_INTERVAL = 60  # Small, healthy batches can resume before the normal service cycle.
+RADAR_STALE_AFTER = 1800  # A responding provider may still have stopped publishing radar.
 GEOMET = 'https://geo.weather.gc.ca/geomet'
 LAYERS = {
     'rvradar': ('Radar_1km_SfcPrecipType', 'SfcPrecipType_Dis'),
@@ -403,21 +404,39 @@ class Maps:
             times = times[-self.history:] if radar else forecast_times(times, now, self.history)
             new_state['frames'] = [by_time[t] for t in times]
 
+        # A metadata refresh, or rediscovery of PNGs already on disk, does not
+        # make forecast imagery new. Use actual completed image write times,
+        # never the time we last attempted a provider request.
+        saved_times = []
+        for frame in new_state['frames']:
+            image = self.path(frame['file'])
+            if image:
+                try:
+                    saved_times.append(int(image.stat().st_mtime))
+                except OSError:
+                    continue
+        new_state['updated'] = min(now, max(saved_times)) if saved_times else old.get('updated', 0)
+        desired_times = {stamp for stamp, _ in frames}
+        new_state['complete'] = legend_ready and desired_times.issubset(
+            {frame['valid'] for frame in new_state['frames']})
+
         keep_old = False
-        if old_available and not same_sequence and not new_state['complete']:
+        if old_available and not same_sequence:
             if radar:
                 old_newest = max(f['valid'] for f in old_available)
-                new_newest = completed[-1]['valid']
-                # Fresh observations outrank a longer but older animation.
-                # An old "complete" flag says nothing about today's usable history.
-                keep_old = (now - old_newest <= 1800 and old_newest >= new_newest and (
-                    len(old_available) > len(completed) or
-                    (len(old_available) == len(completed) and old.get('source') == 'ECCC')
-                ))
-            else:
+                new_newest = max(f['valid'] for f in new_state['frames'])
+                # Never replace fresher radar with older observations, even
+                # when the older provider reports a "complete" sequence.
+                keep_old = (old_newest > new_newest
+                            or (not new_state['complete'] and
+                                old_newest == new_newest and
+                                (len(old_available) > len(new_state['frames']) or
+                                 (len(old_available) == len(new_state['frames'])
+                                  and old.get('source') == 'ECCC'))))
+            elif not new_state['complete']:
                 # Keep a useful coherent model run while its successor fills.
                 keep_old = (old.get('complete') and now - old.get('updated', 0) <= 21600
-                            and len(old_available) > len(completed))
+                            and len(old_available) > len(new_state['frames']))
         if keep_old:
             # The candidate frames remain on disk and are reused next pass,
             # but AF3 continues displaying the previous coherent sequence.
@@ -428,7 +447,8 @@ class Maps:
         self.commit()
         # A bounded-but-healthy initial download is not an outage. Only
         # actual provider errors should trigger the Canadian radar fallback.
-        return new_state['complete'], failed, legend_ready
+        newest_observation = max(f['valid'] for f in new_state['frames']) if radar else None
+        return new_state['complete'], failed, legend_ready, newest_observation
 
     def refresh(self, enabled):
         """Refresh enabled layers independently; one unavailable layer cannot block others."""
@@ -449,26 +469,39 @@ class Maps:
             interval = 600 if kind == 'rvradar' else 10800
             now = int(self.clock())
             age = now - old.get('updated', 0)
+            latest_old_radar = max(
+                (f.get('valid', 0) for f in old.get('frames', [])
+                 if isinstance(f, dict)), default=0)
+            check_preferred_radar = (kind == 'rvradar' and self.prefer_geomet
+                                     and (old.get('source') == 'RainViewer'
+                                          or now - latest_old_radar > RADAR_STALE_AFTER))
             if (old.get('complete') and not old.get('continuing')
                     and old.get('history') == self.history and 0 <= age < interval
-                    and not (kind == 'rvradar' and self.prefer_geomet
-                             and old.get('source') == 'RainViewer')
+                    and not check_preferred_radar
                     and all(self.path(f['file']) for f in old.get('frames', []))):
                 continue
             retry_interval = CONTINUE_INTERVAL if old.get('continuing') else 240
             if 0 <= now - old.get('attempt', 0) < retry_interval:
                 continue
             try:
-                complete, failed, legend_ready = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
+                complete, failed, legend_ready, newest = self.sequence(
+                    kind, kind != 'rvradar' or self.prefer_geomet)
             except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
                 self.log('{} unavailable: {}'.format(kind, exc))
-                complete, failed, legend_ready = False, True, False
-            # A genuinely failed Canadian radar fetch needs fallback, even
-            # when some valid frames were already downloaded. A normal bounded
-            # history fill does not need an alternate provider.
-            if kind == 'rvradar' and self.prefer_geomet and failed and not self.aborted():
+                complete, failed, legend_ready, newest = False, True, False, None
+            # GeoMet can reply successfully with an old, complete catalogue.
+            # Prefer a fresh RainViewer observation to a silently stalled feed.
+            stale_eccc = (kind == 'rvradar' and self.prefer_geomet
+                          and newest is not None and now - newest > RADAR_STALE_AFTER)
+            if (kind == 'rvradar' and self.prefer_geomet
+                    and (failed or stale_eccc) and not self.aborted()):
                 try:
-                    self.sequence(kind, False)
+                    rv_complete, rv_failed, rv_legend, _ = self.sequence(kind, False)
+                    if self.state.get(kind, {}).get('source') == 'RainViewer':
+                        # Backfill the displayed fallback on the normal healthy
+                        # 60-second cadence without repeatedly replacing it with
+                        # a complete but stale GeoMet animation.
+                        complete, failed, legend_ready = rv_complete, rv_failed, rv_legend
                 except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
                     self.log('RainViewer fallback unavailable: ' + str(fallback_exc))
             state = self.state.setdefault(kind, {})
