@@ -304,6 +304,12 @@ class Maps:
         return native.transform((SIZE, SIZE), affine, layout['affine'], resample=bilinear)
 
     def sequence(self, kind, geomet=True):
+        """Build a bounded batch and preserve a complete previous animation.
+
+        Files are named by provider, model run, style and valid timestamp. New
+        frames can therefore be accumulated over several service cycles without
+        publishing a mixture of two forecast runs or exhausting free radar APIs.
+        """
         now = int(self.clock())
         if geomet:
             info = self.metadata(kind)
@@ -329,38 +335,82 @@ class Maps:
                       if -900 <= now - t <= 10800][-self.history:]
             run, style, source, legend = 0, 'universal-blue', 'RainViewer', self.rv_legend()
             legend_ready = True
+
         if not frames:
             raise ValueError('No current map times available')
+
+        radar = kind == 'rvradar'
+        # Limit first-run downloads. Finish current frames before older history
+        # and let the five-minute service cycle fill the animation gradually.
+        budget = (4 if geomet else 3) if radar else 2
+        order = list(reversed(frames)) if radar else sorted(
+            frames, key=lambda frame: (abs(frame[0] - now), frame[0]))
         completed = []
-        # Latest radar first: limited rate budgets must still provide a current frame.
-        order = reversed(frames) if kind == 'rvradar' else frames
+        requests = 0
         for valid, path in order:
             if self.aborted():
                 break
             style_id = hashlib.sha256((style + str(legend_ready)).encode()).hexdigest()[:8]
-            file = '{}_{}_{}_{}_{}.png'.format(kind, source, run, style_id, valid)
-            try:
-                if not self.path(file):
-                    frame = self.wms_image(kind, valid, run, style) if geomet else self.rv_image(valid, path)
-                    save_image(self.directory / file, self.annotate(frame, legend, source))
-                completed.append({'valid': valid, 'file': file})
-            except (OSError, ValueError, TypeError) as exc:
-                self.log('{} frame {} unavailable: {}'.format(kind, valid, exc))
-                break  # Retry next cycle; do not exhaust rate budgets on more old frames.
+            filename = '{}_{}_{}_{}_{}.png'.format(kind, source, run, style_id, valid)
+            if not self.path(filename):
+                if requests >= budget:
+                    continue
+                requests += 1
+                try:
+                    image = self.wms_image(kind, valid, run, style) if geomet else self.rv_image(valid, path)
+                    save_image(self.directory / filename, self.annotate(image, legend, source))
+                except (OSError, ValueError, TypeError) as exc:
+                    self.log('{} frame {} unavailable: {}'.format(kind, valid, exc))
+                    break
+            completed.append({'valid': valid, 'file': filename})
+
         if not completed:
             raise ValueError('No complete frames')
-        # Retain missing frames of the same run/source, never mix forecast runs/providers.
+
+        completed.sort(key=lambda frame: frame['valid'])
+        new_state = {
+            'frames': completed, 'run': run, 'source': source, 'style': style,
+            'updated': now, 'attempt': now,
+            'complete': len(completed) == len(frames) and legend_ready,
+            'history': self.history, 'legend_ready': legend_ready,
+        }
+
         old = self.state.get(kind, {})
-        if old.get('run') == run and old.get('source') == source and old.get('style') == style and old.get('legend_ready') == legend_ready:
-            desired = {t for t, _ in frames}
-            found = {f['valid'] for f in completed}
-            completed += [f for f in old.get('frames', []) if f['valid'] in desired
-                          and f['valid'] not in found and self.path(f['file'])]
-        self.state[kind] = {'frames': sorted(completed, key=lambda f: f['valid']), 'run': run,
-                            'source': source, 'style': style, 'updated': now, 'attempt': now,
-                            'complete': len(completed) == len(frames) and legend_ready, 'history': self.history,
-                            'legend_ready': legend_ready}
+        old_available = [
+            f for f in old.get('frames', [])
+            if isinstance(f, dict) and isinstance(f.get('valid'), int)
+            and self.path(f.get('file'))
+            and ((-900 <= now - f['valid'] <= 10800) if radar else
+                 (0 <= now - old.get('updated', 0) <= 86400
+                  and now - 10800 <= f['valid'] <= now + 86400))
+        ]
+        same_sequence = (
+            old.get('run') == run and old.get('source') == source
+            and old.get('style') == style
+            and old.get('legend_ready') == legend_ready
+        )
+
+        keep_old = bool(old_available and not new_state['complete'] and (
+            # During a model/source rollover, don't replace a full animation
+            # with the first one or two frames of its successor.
+            old.get('complete') or
+            # A partial fallback should not displace a more useful frame set.
+            (not same_sequence and (
+                len(completed) < len(old_available) or
+                (source == 'RainViewer' and old.get('source') == 'ECCC'
+                 and len(completed) == len(old_available)
+                 and completed[-1]['valid'] <= max(f['valid'] for f in old_available))
+            ))
+        ))
+        if keep_old:
+            # The candidate frames remain on disk and are reused next pass,
+            # but AF3 continues displaying the previous coherent sequence.
+            old['attempt'] = now
+            self.state[kind] = old
+        else:
+            self.state[kind] = new_state
         self.commit()
+        return new_state['complete']
 
     def refresh(self, enabled):
         """Refresh enabled layers independently; one unavailable layer cannot block others."""
@@ -382,23 +432,26 @@ class Maps:
             now = int(self.clock())
             age = now - old.get('updated', 0)
             if (old.get('complete') and old.get('history') == self.history and 0 <= age < interval
+                    and not (kind == 'rvradar' and self.prefer_geomet
+                             and old.get('source') == 'RainViewer')
                     and all(self.path(f['file']) for f in old.get('frames', []))):
                 continue
             if 0 <= now - old.get('attempt', 0) < 240:
                 continue
             try:
-                self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
+                complete = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
             except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
                 self.log('{} unavailable: {}'.format(kind, exc))
-                if kind == 'rvradar' and self.prefer_geomet and not self.aborted():
-                    try:
-                        self.sequence(kind, False)
-                        # Keep retrying the preferred provider on subsequent service cycles.
-                        self.state[kind]['complete'] = False
-                        self.commit()
-                        continue
-                    except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
-                        self.log('RainViewer fallback unavailable: ' + str(fallback_exc))
+                complete = False
+            # A partially downloaded Canadian radar sequence also needs a
+            # fallback. Keep any complete ECCC sequence until the alternate
+            # provider actually offers a coherent replacement.
+            if kind == 'rvradar' and self.prefer_geomet and not complete and not self.aborted():
+                try:
+                    self.sequence(kind, False)
+                except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
+                    self.log('RainViewer fallback unavailable: ' + str(fallback_exc))
+            if not complete:
                 self.state.setdefault(kind, {})['attempt'] = now
                 self.commit()
         self.cleanup()
