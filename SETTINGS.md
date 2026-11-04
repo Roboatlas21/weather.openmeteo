@@ -64,7 +64,7 @@ Weather alerts help you stay informed about conditions that may affect your dail
 ### Data Flow
 
 1. **Weather Data Retrieval**: The addon fetches weather data from Open-Meteo's API based on your configured location coordinates
-2. **Map Generation**: Past radar imagery is retrieved from RainViewer, and temperature/wind/cloud/precipitation overlays from Environment Canada GeoMet. RainViewer no longer provides free satellite imagery.
+2. **Map Generation**: Past radar uses Environment Canada for Canadian locations and RainViewer elsewhere, with RainViewer fallback. GeoMet forecast maps animate explicit valid times over the next 24 hours. RainViewer no longer provides satellite imagery.
 3. **Alert Processing**: Every `alert_interval` minutes (default: 30), the addon checks forecasted conditions for the next `alert_hours` hours (default: 8)
 4. **Threshold Comparison**: Current and forecasted values are compared against your configured thresholds
 5. **Notification Display**: If thresholds are exceeded and the corresponding alert level is enabled, a notification is displayed for `alert_duration` seconds
@@ -233,14 +233,17 @@ The addon provides several types of weather maps that can be displayed in suppor
 | Setting | Type | Range | Description |
 |---------|------|-------|-------------|
 | `mapzoom` | integer | 2-10 | Zoom level of the map base layer; RainViewer radar tiles are upscaled beyond native zoom 7 |
-| `maphistory` | integer | 1-24 | Hours of historical map data to store for animations |
-| `maprvradar` | boolean | — | Enable RainViewer precipitation radar |
+| `maphistory` | integer | 4-24, step 4 | Maximum animation frames (default 12); ECCC radar up to 24, RainViewer up to 12, forecasts up to nine |
+| `maprvradar` | boolean | — | Enable precipitation radar using the selected source |
+| `mapradarsource` | string | auto / geomet / rainviewer | Auto selects ECCC in Canada; ECCC falls back to RainViewer on failure |
+| `mapmuted` | boolean | — | Reduce background colour and brightness for clearer weather overlays |
+| `maplegends` | boolean | — | Embed provider legends directly in map images, compatible with stock AF3 |
 | `maprvsatellite` | boolean | — | Retired and hidden: RainViewer infrared satellite no longer available |
 | `mapgctemp` | boolean | — | Enable temperature overlay map |
-| `mapgcwind` | boolean | — | Enable GeoMet wind-barb overlay map |
+| `mapgcwind` | boolean | — | Enable GeoMet wind arrows with a km/h legend |
 | `mapgccloud` | boolean | — | Enable GeoMet total cloud-cover map |
 | `mapgcprecip` | boolean | — | Enable GeoMet precipitation-type map |
-| `maposm` | boolean | — | Enable OpenStreetMap base layer |
+| `maposm` | boolean | — | Legacy hidden setting; the shared OSM background is always provided for enabled layers |
 
 ### Zoom Level Guide
 
@@ -248,17 +251,21 @@ The addon provides several types of weather maps that can be displayed in suppor
 |------|----------|----------|
 | 4-5 | Continental | Overview of weather systems |
 | 6-7 | Regional | Multi-country view |
-| 8-9 | Area | Single country / large region |
-| 10-11 | Local | City and surroundings |
-| 12+ | Detailed | Neighborhood level |
+| 8-9 | Area | City and surrounding region |
+| 10 | Local | City and surroundings |
 
 **Recommendation**: Zoom level 8 works well for most users, providing a good balance between detail and coverage.
 
 ### Map Data Sources
 
 - **RainViewer**: Provides two hours of historical precipitation radar at ten-minute intervals (native maximum zoom 7)
-- **weather.gc.ca**: Canadian government weather service (temperature and wind maps)
-- **met.no**: Norwegian Meteorological Institute (additional weather data)
+- **Environment Canada GeoMet**: precipitation-type radar at six-minute intervals; temperature, wind, cloud and precipitation-type forecasts. Model run and valid time are pinned for each forecast sequence. Legends display the provider units (°C for temperature and km/h for wind).
+- **OpenStreetMap**: shared geographic background with the selected location marked.
+
+Stock AF3 keeps its existing layout and playback controls. Legends are embedded in the images.
+Radar older than three hours is hidden; forecast caches older than six hours are labelled cached,
+and those older than one day are hidden. A complete prior image is retained during a failed refresh.
+Map cache manifests, not the legacy `loc[N]map/rv/gc` timestamps, track each layer independently.
 
 ---
 

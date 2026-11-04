@@ -34,13 +34,15 @@ def Main():
 			start   = utils.time.time()
 			current = utils.settingrpc("weather.currentlocation")
 
-			# Download
-			for locid in range(1, config.addon.maxlocs):
-				if utils.setting(f'loc{locid}'):
-					weather.Main(str(locid), mode='download')
-
-			# Update
-			weather.Main(str(current), mode='update')
+			# Publish the selected location before spending time on other locations.
+			locations = [str(i) for i in range(1, config.addon.maxlocs) if utils.setting(f'loc{i}')]
+			locations.sort(key=lambda locid: locid != str(current))
+			for locid in locations:
+				if utils.monitor.abortRequested():
+					break
+				weather.Main(locid, mode='download')
+				if locid == str(utils.settingrpc('weather.currentlocation')):
+					weather.Main(locid, mode='update')
 			utils.setsetting('service', 'idle')
 
 			# Notification
@@ -68,4 +70,5 @@ def Main():
 
 	utils.log(f'Stopping service ...')
 	api.s.close()
+
 

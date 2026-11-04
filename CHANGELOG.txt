@@ -1,3 +1,15 @@
+v1.0.31 (fork development branch; not an upstream release)
+--------------------------------------------------------
+* Support stock AF3 with embedded legends, a location marker and muted maps
+* Keep the shared background available when radar is disabled or unavailable
+* Isolate location/zoom/appearance caches and reject incomplete map downloads
+* Refresh enabled layers independently and clear every legacy animation slot
+* Animate the next 24 hours of forecasts using explicit valid times and model runs
+* Align GeoMet imagery with OSM in EPSG:3857, including dateline/polar viewports
+* Prefer Environment Canada radar in Canada with RainViewer fallback
+* Show loading/unavailable/cached status and prioritize the selected location
+* Add behavioral regressions for cache, failure, time and AF3 property contracts
+
 v1.0.30 (fork development branch; not an upstream release)
 --------------------------------------------------------
 * Updated RainViewer radar after 2026 API changes: Universal Blue and native zoom 7
@@ -137,3 +149,4 @@ v0.9.1 (15/09/2024)
 v0.9.0 (06/09/2024)
 -------------------
 * Initial release
+

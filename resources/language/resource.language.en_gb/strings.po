@@ -766,3 +766,52 @@ msgctxt "#32501"
 msgid "Weather, maps, airquality and pollen forecast from open-meteo.com, rainviewer.com, weather.gc.ca and met.no"
 msgstr ""
 
+
+
+msgctxt "#32600"
+msgid "Radar source"
+msgstr ""
+
+msgctxt "#32601"
+msgid "Automatic (Environment Canada in Canada)"
+msgstr ""
+
+msgctxt "#32602"
+msgid "Environment Canada (RainViewer fallback)"
+msgstr ""
+
+msgctxt "#32603"
+msgid "RainViewer"
+msgstr ""
+
+msgctxt "#32604"
+msgid "Muted map background"
+msgstr ""
+
+msgctxt "#32605"
+msgid "Show legends on maps"
+msgstr ""
+
+msgctxt "#32606"
+msgid "Loading weather maps..."
+msgstr ""
+
+msgctxt "#32607"
+msgid "Weather maps unavailable"
+msgstr ""
+
+msgctxt "#32608"
+msgid "Cached data"
+msgstr ""
+
+msgctxt "#32609"
+msgid "Automatic uses Environment Canada radar for Canadian locations and RainViewer elsewhere. Forecast maps use Environment Canada. Legends and the location marker work with stock Arctic Fuse 3."
+msgstr ""
+
+msgctxt "#32610"
+msgid "Animation frames"
+msgstr ""
+
+msgctxt "#32611"
+msgid "Maximum number of frames in each animation. Environment Canada radar supports up to 24; RainViewer up to 12. Forecast maps show up to nine times across the next 24 hours."
+msgstr ""

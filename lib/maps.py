@@ -1,0 +1,468 @@
+"""Complete, time-addressed maps for Kodi's existing Map.* skin contract.
+
+No Kodi imports: network, cancellation, translations and date formatting are
+injected. Files and manifests are committed atomically; display never depends
+on mutable global location settings or on partially downloaded tile grids.
+"""
+import hashlib
+import io
+import json
+import math
+import os
+import re
+import tempfile
+import time
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import urlencode
+
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from . import maptiles
+
+SIZE = maptiles.CANVAS_SIZE
+SCHEMA = 4
+HISTORY_SLOTS = 48  # Clear slots left by older versions/settings; stock AF3 reads 24.
+GEOMET = 'https://geo.weather.gc.ca/geomet'
+LAYERS = {
+    'rvradar': ('Radar_1km_SfcPrecipType', 'SfcPrecipType_Dis'),
+    'gctemp': ('GDPS_15km_AirTemp_2m', 'TEMPERATURE-LINEAR'),
+    'gcwind': ('GDPS_15km_Winds_10m', 'WINDARROWKMH'),
+    'gccloud': ('GDPS_15km_TotalCloudCover', 'CLOUD'),
+    'gcprecip': ('GDPS_15km_PrecipType-Significant1h', 'SIGPRECIPITATIONTYPE'),
+}
+_METADATA = {}
+
+
+def utc(stamp):
+    return datetime.fromtimestamp(stamp, timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def timestamp(value):
+    return int(datetime.fromisoformat(value.strip().replace('Z', '+00:00')).timestamp())
+
+
+def time_values(value):
+    """Decode WMS lists/ranges, with bounded expansion for untrusted metadata."""
+    values = set()
+    for part in value.split(','):
+        try:
+            if '/' not in part:
+                values.add(timestamp(part))
+                continue
+            start, end, duration = part.split('/')
+            match = re.fullmatch(r'P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?', duration)
+            if not match:
+                continue
+            days, hours, minutes, seconds = [int(v or 0) for v in match.groups()]
+            step = days * 86400 + hours * 3600 + minutes * 60 + seconds
+            first, last = timestamp(start), timestamp(end)
+            if step <= 0 or last < first or (last - first) // step > 4096:
+                continue
+            values.update(range(first, last + 1, step))
+        except (ValueError, OverflowError):
+            continue
+    return sorted(values)
+
+
+def capabilities(data, name, preferred_style):
+    """Read the layer's advertised valid times, model run, and matching style."""
+    root = ET.fromstring(data)
+    ns = {'w': 'http://www.opengis.net/wms'}
+    for layer in root.findall('.//w:Layer', ns):
+        if layer.findtext('w:Name', namespaces=ns) != name:
+            continue
+        dims = {d.get('name'): d for d in layer.findall('w:Dimension', ns)}
+        times = time_values(dims['time'].text or '')
+        reference = dims.get('reference_time')
+        run = timestamp(reference.get('default')) if reference is not None else 0
+        styles = [s.findtext('w:Name', namespaces=ns) for s in layer.findall('w:Style', ns)]
+        style = preferred_style if preferred_style in styles else next((s for s in styles if s), '')
+        if times and style:
+            return {'times': times, 'run': run, 'style': style}
+    raise ValueError('No usable time/style metadata for ' + name)
+
+
+def forecast_times(times, now, count):
+    """Sample the next 24 hours, including the nearest current forecast step."""
+    candidates = [t for t in times if now - 10800 <= t <= now + 86400]
+    if not candidates:
+        return []
+    count = min(max(1, count), 9)
+    targets = [now + i * 86400 / max(1, count - 1) for i in range(count)]
+    return sorted({min(candidates, key=lambda t: abs(t - target)) for target in targets})
+
+
+def png(data, size=None):
+    if not data or not data.startswith(b'\x89PNG\r\n\x1a\n'):
+        raise ValueError('Map service did not return PNG')
+    with Image.open(io.BytesIO(data)) as image:
+        if image.format != 'PNG' or max(image.size) > 2048 or (size and image.size != size):
+            raise ValueError('Unexpected map dimensions')
+        image.load()
+        return image.convert('RGBA')
+
+
+def atomic(path, writer):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix='.', suffix='.tmp', dir=str(path.parent))
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            writer(stream)
+        os.replace(tmp, str(path))
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def save_image(path, image):
+    atomic(path, lambda stream: image.save(stream, format='PNG'))
+
+
+class Maps:
+    def __init__(self, root, lat, lon, zoom, history=12, radar='auto', country='',
+                 muted=True, legends=True, fetch=None, aborted=lambda: False,
+                 log=lambda message: None, font_paths=(), clock=time.time):
+        self.lat, self.lon, self.zoom = float(lat), float(lon), max(2, min(10, int(zoom)))
+        self.history = max(4, min(24, int(history)))
+        self.radar = radar if radar in ('auto', 'rainviewer', 'geomet') else 'auto'
+        self.prefer_geomet = self.radar == 'geomet' or (self.radar == 'auto' and country == 'CA')
+        self.muted, self.legends = muted, legends
+        self.fetch, self.aborted, self.log, self.clock = fetch, aborted, log, clock
+        self.x, self.y, self.marker = maptiles.location_tile(self.lat, self.lon, self.zoom)
+        key = json.dumps([SCHEMA, self.lat, self.lon, self.zoom, self.prefer_geomet, muted, legends])
+        self.directory = Path(root) / 'maps' / hashlib.sha256(key.encode()).hexdigest()[:16]
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.manifest = self.directory / 'state.json'
+        self.state = self.read_state()
+        self.font = ImageFont.load_default()
+        for path in font_paths:
+            try:
+                self.font = ImageFont.truetype(str(path), 18)
+                break
+            except OSError:
+                continue
+
+    def read_state(self):
+        try:
+            state = json.loads(self.manifest.read_text(encoding='utf-8'))
+            return state if isinstance(state, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def commit(self):
+        data = json.dumps(self.state, sort_keys=True).encode('utf-8')
+        atomic(self.manifest, lambda stream: stream.write(data))
+
+    def path(self, name):
+        # A damaged/edited cache manifest must never reference outside its grid.
+        if not isinstance(name, str) or Path(name).name != name:
+            return None
+        path = self.directory / name
+        return path if path.is_file() else None
+
+    def image(self, url, size=None):
+        if self.aborted():
+            raise ValueError('Map update cancelled')
+        return png(self.fetch(url), size)
+
+    def metadata(self, kind):
+        name, style = LAYERS[kind]
+        now = self.clock()
+        cached = _METADATA.get(name)
+        if cached and 0 <= now - cached[0] < 300:
+            return cached[1]
+        query = urlencode({'SERVICE': 'WMS', 'VERSION': '1.3.0', 'REQUEST': 'GetCapabilities', 'LAYERS': name})
+        result = capabilities(self.fetch(GEOMET + '?' + query), name, style)
+        _METADATA[name] = (now, result)
+        return result
+
+    def basemap(self):
+        """Keep the last complete background until every replacement tile arrives."""
+        old = self.state.get('base', {})
+        if self.path(old.get('file')) and 0 <= self.clock() - old.get('updated', 0) < 604800:
+            return True
+        tiles = [(x, y) for y in range(self.y - 1, self.y + 2)
+                 for x in range(self.x - 1, self.x + 2) if 0 <= y < (1 << self.zoom)]
+        def download(tile):
+            x, y = tile
+            url = 'https://tile.openstreetmap.org/{}/{}/{}.png'.format(self.zoom, x % (1 << self.zoom), y)
+            return tile, self.image(url, (256, 256))
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            images = list(pool.map(download, tiles))  # Any missing tile aborts publication.
+        base = Image.new('RGBA', (SIZE, SIZE), '#242b34')
+        for (x, y), image in images:
+            base.paste(image, ((x - self.x + 1) * 256, (y - self.y + 1) * 256))
+        if self.muted:
+            base = ImageEnhance.Color(base).enhance(0.35)
+            base = ImageEnhance.Brightness(base).enhance(0.78)
+        if self.legends:
+            ImageDraw.Draw(base).rectangle((522, 143, 751, 497), fill='white')
+        ImageDraw.Draw(base).rectangle((22, 532, 590, 560), fill='#101820')
+        self.draw_marker(base)
+        # Unique paths also invalidate Kodi's texture cache after weekly renewal.
+        name = 'osm_{}.png'.format(int(self.clock()))
+        save_image(self.directory / name, base)
+        self.state['base'] = {'file': name, 'updated': int(self.clock())}
+        self.commit()
+        return True
+
+    def draw_marker(self, image):
+        x, y = self.marker
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((x - 8, y - 8, x + 8, y + 8), fill='white', outline='#102030', width=2)
+        draw.ellipse((x - 4, y - 4, x + 4, y + 4), fill='#087ee8')
+
+    def legend(self, kind, style):
+        name = 'legend_{}_{}.png'.format(kind, hashlib.sha256(style.encode()).hexdigest()[:10])
+        path = self.path(name)
+        if path:
+            with Image.open(path) as image:
+                return image.convert('RGBA')
+        query = urlencode({'SERVICE': 'WMS', 'VERSION': '1.3.0', 'REQUEST': 'GetLegendGraphic',
+                           'SLD_VERSION': '1.1.0', 'LAYER': LAYERS[kind][0], 'STYLE': style, 'FORMAT': 'image/png'})
+        image = self.image(GEOMET + '?' + query)
+        save_image(self.directory / name, image)
+        return image
+
+    def annotate(self, image, legend=None, source='ECCC'):
+        """Draw inside stock AF3's crop/header/footer safe area (y=130..560)."""
+        image = image.copy()
+        draw = ImageDraw.Draw(image)
+        if self.legends and legend is not None:
+            legend = legend.copy()
+            resample = Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS
+            legend.thumbnail((215, 340), resample)
+            x, y = 529 + (215 - legend.width) // 2, 150
+            draw.rectangle((522, 143, 751, 497), fill='white')
+            image.alpha_composite(legend, (x, y))
+        elif self.legends:
+            draw.text((536, 170), 'Legend unavailable', font=self.font, fill='black')
+        self.draw_marker(image)
+        credit = source + ' | © OpenStreetMap contributors'
+        draw.rectangle((22, 532, 590, 560), fill='#101820')
+        draw.text((29, 536), credit, font=self.font, fill='white')
+        return image
+
+    def rv_legend(self):
+        # Universal Blue official palette: rain and snow, values in dBZ.
+        # https://www.rainviewer.com/files/rainviewer_api_colors_table.csv
+        image = Image.new('RGBA', (210, 111), 'white')
+        draw = ImageDraw.Draw(image)
+        rain = ['#88ddee', '#0077aa', '#ffee00', '#ff4400', '#ffaaFF']
+        snow = ['#9fdfff', '#5f9fff', '#3f7fff', '#1f5fff', '#003fff']
+        for row, (title, colors) in enumerate([('Rain (dBZ)', rain), ('Snow (dBZ)', snow)]):
+            y = row * 55
+            draw.text((3, y), title, font=self.font, fill='black')
+            for i, color in enumerate(colors):
+                x = 4 + i * 40
+                draw.rectangle((x, y + 23, x + 34, y + 33), fill=color)
+                draw.text((x + 2, y + 35), str(15 + i * 10), font=self.font, fill='black')
+        return image
+
+    def wms_image(self, kind, valid, run, style):
+        output = Image.new('RGBA', (SIZE, SIZE))
+        for bbox, width, height, x, y in maptiles.mercator_segments(self.x, self.y, self.zoom):
+            query = {'SERVICE': 'WMS', 'VERSION': '1.3.0', 'REQUEST': 'GetMap',
+                     'CRS': 'EPSG:3857', 'BBOX': ','.join(str(v) for v in bbox),
+                     'WIDTH': width, 'HEIGHT': height, 'LAYERS': LAYERS[kind][0],
+                     'STYLES': style, 'TIME': utc(valid), 'FORMAT': 'image/png', 'TRANSPARENT': 'TRUE'}
+            if run:
+                query['DIM_REFERENCE_TIME'] = utc(run)
+            # Interpolate continuous temperature/cloud fields; preserve categorical precipitation.
+            if kind in ('gctemp', 'gccloud'):
+                query['INTERPOLATION'] = 'TRUE'
+            tile = self.image(GEOMET + '?' + urlencode(query), (width, height))
+            output.paste(tile, (x, y))
+        return output
+
+    def rv_image(self, stamp, path):
+        layout = maptiles.radar_tile_layout(self.x, self.y, self.zoom)
+        native = Image.new('RGBA', (layout['columns'] * 256, layout['rows'] * 256))
+        def download(tile):
+            x, y, px, py = tile
+            url = 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/2/1_1.png'.format(path, layout['zoom'], x, y)
+            return px, py, self.image(url, (256, 256))
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            images = list(pool.map(download, layout['tiles']))
+        for x, y, tile in images:
+            native.paste(tile, (x, y))
+        affine = Image.Transform.AFFINE if hasattr(Image, 'Transform') else Image.AFFINE
+        bilinear = Image.Resampling.BILINEAR if hasattr(Image, 'Resampling') else Image.BILINEAR
+        return native.transform((SIZE, SIZE), affine, layout['affine'], resample=bilinear)
+
+    def sequence(self, kind, geomet=True):
+        now = int(self.clock())
+        if geomet:
+            info = self.metadata(kind)
+            run, style = info['run'], info['style']
+            if kind != 'rvradar' and not run:
+                raise ValueError('Forecast model run is missing')
+            if kind == 'rvradar':
+                times = [t for t in info['times'] if 0 <= now - t <= 10800][-self.history:]
+            else:
+                times = forecast_times(info['times'], now, self.history)
+            source = 'ECCC'
+            legend, legend_ready = None, True
+            if self.legends:
+                try:
+                    legend = self.legend(kind, style)
+                except (OSError, ValueError, TypeError) as exc:
+                    self.log('{} legend unavailable: {}'.format(kind, exc))
+                    legend_ready = False
+            frames = [(t, None) for t in times]
+        else:
+            data = json.loads(self.fetch('https://api.rainviewer.com/public/weather-maps.json'))
+            frames = [(t, path) for t, path in maptiles.radar_frames(data)
+                      if -900 <= now - t <= 10800][-self.history:]
+            run, style, source, legend = 0, 'universal-blue', 'RainViewer', self.rv_legend()
+            legend_ready = True
+        if not frames:
+            raise ValueError('No current map times available')
+        completed = []
+        # Latest radar first: limited rate budgets must still provide a current frame.
+        order = reversed(frames) if kind == 'rvradar' else frames
+        for valid, path in order:
+            if self.aborted():
+                break
+            style_id = hashlib.sha256((style + str(legend_ready)).encode()).hexdigest()[:8]
+            file = '{}_{}_{}_{}_{}.png'.format(kind, source, run, style_id, valid)
+            try:
+                if not self.path(file):
+                    frame = self.wms_image(kind, valid, run, style) if geomet else self.rv_image(valid, path)
+                    save_image(self.directory / file, self.annotate(frame, legend, source))
+                completed.append({'valid': valid, 'file': file})
+            except (OSError, ValueError, TypeError) as exc:
+                self.log('{} frame {} unavailable: {}'.format(kind, valid, exc))
+                break  # Retry next cycle; do not exhaust rate budgets on more old frames.
+        if not completed:
+            raise ValueError('No complete frames')
+        # Retain missing frames of the same run/source, never mix forecast runs/providers.
+        old = self.state.get(kind, {})
+        if old.get('run') == run and old.get('source') == source and old.get('style') == style and old.get('legend_ready') == legend_ready:
+            desired = {t for t, _ in frames}
+            found = {f['valid'] for f in completed}
+            completed += [f for f in old.get('frames', []) if f['valid'] in desired
+                          and f['valid'] not in found and self.path(f['file'])]
+        self.state[kind] = {'frames': sorted(completed, key=lambda f: f['valid']), 'run': run,
+                            'source': source, 'style': style, 'updated': now, 'attempt': now,
+                            'complete': len(completed) == len(frames) and legend_ready, 'history': self.history,
+                            'legend_ready': legend_ready}
+        self.commit()
+
+    def refresh(self, enabled):
+        """Refresh enabled layers independently; one unavailable layer cannot block others."""
+        if not any(enabled.values()) or self.aborted():
+            return
+        try:
+            self.basemap()
+        except (OSError, ValueError, TypeError) as exc:
+            self.log('Background unavailable: ' + str(exc))
+            self.state['base_attempt'] = int(self.clock())
+            self.commit()
+        if not self.path(self.state.get('base', {}).get('file')):
+            return
+        for kind in LAYERS:
+            if not enabled.get(kind) or self.aborted():
+                continue
+            old = self.state.get(kind, {})
+            interval = 600 if kind == 'rvradar' else 10800
+            now = int(self.clock())
+            age = now - old.get('updated', 0)
+            if (old.get('complete') and old.get('history') == self.history and 0 <= age < interval
+                    and all(self.path(f['file']) for f in old.get('frames', []))):
+                continue
+            if 0 <= now - old.get('attempt', 0) < 240:
+                continue
+            try:
+                self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
+            except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
+                self.log('{} unavailable: {}'.format(kind, exc))
+                if kind == 'rvradar' and self.prefer_geomet and not self.aborted():
+                    try:
+                        self.sequence(kind, False)
+                        # Keep retrying the preferred provider on subsequent service cycles.
+                        self.state[kind]['complete'] = False
+                        self.commit()
+                        continue
+                    except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
+                        self.log('RainViewer fallback unavailable: ' + str(fallback_exc))
+                self.state.setdefault(kind, {})['attempt'] = now
+                self.commit()
+        self.cleanup()
+
+    def cleanup(self):
+        # Give Kodi a full day to release previously published textures before deletion.
+        keep = {f['file'] for kind in LAYERS for f in self.state.get(kind, {}).get('frames', [])}
+        keep.add(self.state.get('base', {}).get('file'))
+        now = self.clock()
+        for directory in self.directory.parent.iterdir():
+            if not directory.is_dir():
+                continue
+            for path in directory.glob('*.png'):
+                if directory == self.directory and (path.name in keep or path.name.startswith('legend_')):
+                    continue
+                try:
+                    if now - path.stat().st_mtime > 86400:
+                        path.unlink()
+                except OSError:
+                    pass
+
+    def placeholder(self, message):
+        name = 'status_' + hashlib.sha256(message.encode()).hexdigest()[:10] + '.png'
+        if not self.path(name):
+            image = Image.new('RGBA', (SIZE, SIZE))
+            draw = ImageDraw.Draw(image)
+            draw.rectangle((100, 260, 668, 345), fill='#101820')
+            draw.text((125, 290), message, font=self.font, fill='white')
+            save_image(self.directory / name, image)
+        return str(self.directory / name)
+
+    def properties(self, enabled, headings, dateformat, words, api=False):
+        """Always clear legacy slots and keep Map.1.Area valid for stock AF3."""
+        props = {}
+        for i in range(10):
+            for field in ('Area', 'Layer', 'Heading', 'Time', 'Legend'):
+                props['Map.{}.{}'.format(i, field)] = ''
+            for slot in range(HISTORY_SLOTS):
+                props['Map.{}.Layer.{}'.format(i, slot)] = ''
+                props['Map.{}.Time.{}'.format(i, slot)] = ''
+        base = self.path(self.state.get('base', {}).get('file'))
+        now = int(self.clock())
+        for i, kind in enumerate(LAYERS, 0 if api else 1):
+            prefix = 'Map.{}.'.format(i)
+            props[prefix + 'Area'] = str(base) if base else ''
+            if not enabled.get(kind):
+                continue
+            state = self.state.get(kind, {})
+            radar = kind == 'rvradar'
+            age = now - state.get('updated', 0)
+            frames = [f for f in state.get('frames', []) if self.path(f['file']) and base
+                      and ((-900 <= now - f['valid'] <= 10800) if radar
+                           else (0 <= age <= 86400 and now - 10800 <= f['valid'] <= now + 86400))]
+            frames = sorted(frames, key=lambda f: f['valid'], reverse=True)
+            limit = min(self.history, 12) if radar and state.get('source') == 'RainViewer' else self.history
+            if not radar and len(frames) > limit:
+                frames = [frames[round(i * (len(frames) - 1) / (limit - 1))] for i in range(limit)]
+            else:
+                frames = frames[:limit]
+            props[prefix + 'Heading'] = headings[kind]
+            if not frames:
+                status = words['unavailable'] if state.get('attempt') or self.state.get('base_attempt') else words['loading']
+                props[prefix + 'Layer'] = props[prefix + 'Layer.0'] = self.placeholder(status)
+                props[prefix + 'Time'] = props[prefix + 'Time.0'] = status
+                continue
+            stale = (now - max(f['valid'] for f in frames) > 1800) if radar else age > 21600
+            for slot, frame in enumerate(frames):
+                label = '{} | {}'.format(words['radar'] if radar else words['forecast'], dateformat(frame['valid']))
+                if stale:
+                    label = words['stale'] + ' | ' + label
+                props[prefix + 'Layer.' + str(slot)] = str(self.path(frame['file']))
+                props[prefix + 'Time.' + str(slot)] = label
+            # Static consumers see the newest radar / nearest current forecast.
+            current = frames[0] if radar else min(frames, key=lambda f: abs(f['valid'] - now))
+            props[prefix + 'Layer'] = str(self.path(current['file']))
+            props[prefix + 'Time'] = dateformat(current['valid'])
+        return props

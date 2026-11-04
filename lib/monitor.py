@@ -19,16 +19,8 @@ class Main(xbmc.Monitor):
 				config.init()
 				weather.Main(str(utils.settingrpc("weather.currentlocation")), mode='update')
 
-				# Map settings can alter both downloaded imagery and visible layers.
-				map_settings = ('mapzoom', 'maprvradar', 'mapgctemp', 'mapgcwind', 'mapgccloud', 'mapgcprecip')
-				if any(current.get(key) != self.old.get(key) for key in map_settings):
-					utils.log('Map settings changed, re-downloading ...')
-
-					for locid in range(1, config.addon.maxlocs):
-						if utils.setting(f'loc{locid}'):
-							utils.setsetting(f'loc{locid}map', '321318000')
-							utils.setsetting(f'loc{locid}rv', '321318000')
-							utils.setsetting(f'loc{locid}gc', '321318000')
+				# Geometry/settings are part of map cache identity. The service will
+				# refresh missing maps without reusing another zoom's frames.
 
 		self.old = current
 
@@ -44,4 +36,5 @@ class Main(xbmc.Monitor):
 				return
 
 			self.waitForAbort(1)
+
 

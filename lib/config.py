@@ -13,14 +13,7 @@ map_api = {
 	'airquality': 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude={}&longitude={}&current=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,ozone,dust,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&hourly=pm10,pm2_5,carbon_monoxide,ozone,dust,european_aqi,us_aqi,nitrogen_dioxide,sulphur_dioxide,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timeformat=unixtime&forecast_days=4&past_days=1',
 	'sun': 'https://api.met.no/weatherapi/sunrise/3.0/sun?lat={}&lon={}&date={}',
 	'moon': 'https://api.met.no/weatherapi/sunrise/3.0/moon?lat={}&lon={}&date={}',
-	'osm': 'https://tile.openstreetmap.org/{}/{}/{}.png',
-	'rvindex': 'https://api.rainviewer.com/public/weather-maps.json',
-	'rvradar': 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/2/1_1.png',
-	'rvsatellite': 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/0/0_0.png',
-	'gctemp': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_AirTemp_2m&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&INTERPOLATION=TRUE',
-	'gcwind': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_Winds_10m&STYLES=WindBarbs_knots&FORMAT=image/png&TRANSPARENT=TRUE',
-	'gccloud': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_TotalCloudCover&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE',
-	'gcprecip': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_PrecipType-Significant1h&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE',
+
 }
 
 # Limits
@@ -42,7 +35,6 @@ neterr      = 0
 
 # Cache
 dnscache = {}
-mapcache = {}
 
 # Modules (disabled)
 # sys.path.append(f'{addon_path}/lib/modules')
@@ -938,4 +930,5 @@ def init(cache=False):
 
 	# Directory
 	utils.createdir()
+
 

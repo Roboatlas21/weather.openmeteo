@@ -6,7 +6,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 from . import config
-from . import maptiles
+from . import maps
 from . import utils
 from . import conv
 
@@ -36,7 +36,7 @@ class Main():
 		# Init
 		self.init(locid, mode)
 
-		if not config.loc.lat or not config.loc.lon:
+		if not utils.setting(f'loc{locid}'):
 			utils.log(f'[LOC{locid}] Not configured', 1)
 			return
 
@@ -51,23 +51,8 @@ class Main():
 				if api.network():
 					utils.setupdate(f'loc{locid}data')
 
-			# Map
-			if utils.lastupdate(f'loc{locid}map') >= 604800:
-				if self.getmap('osm'):
-					utils.setupdate(f'loc{locid}map')
-
-			# Rv
-			if utils.lastupdate(f'loc{locid}rv') >= 600:
-				if self.getmap('rvradar'):
-					utils.setupdate(f'loc{locid}rv')
-
-			# Gc
-			if utils.lastupdate(f'loc{locid}gc') >= 10800:
-				with ThreadPoolExecutor(2) as pool:
-					gc_results = list(pool.map(self.getmap, config.map_gc))
-
-				if all(gc_results):
-					utils.setupdate(f'loc{locid}gc')
+			# Snapshot location/settings once; each layer owns its cache and freshness.
+			self.mapmanager().refresh(self.enabled_maps())
 
 		# Update
 		elif self.mode == 'update' or self.mode == 'kodi':
@@ -477,183 +462,34 @@ class Main():
 		else:
 			utils.addprop(property, content)
 
-	### GET MAP
-	def getmap(self, type):
+	### MAPS
+	def enabled_maps(self):
+		active = utils.setting(f'loc{config.loc.id}maps', 'bool')
+		return {kind: active and utils.setting(f'map{kind}', 'bool') for kind in maps.LAYERS}
 
-		# RainViewer infrared satellite maps were discontinued in Jan 2026.
-		if type == 'rvsatellite':
-			return False
-
-		# Layers disabled
-		if type != 'osm':
-			if not utils.setting(f'map{type}', 'bool') or not utils.setting(f'loc{config.loc.id}maps', 'bool'):
-				return False
-
-		# Check connectivity
-		if not api.network():
-			utils.log(f'[LOC{config.loc.id}] No network connectivity, maps not available ...', 3)
-			return False
-
-		if type == 'rvradar':
-			return self.getradar()
-
-		utils.log(f'[LOC{config.loc.id}] Downloading map: {type}', 3)
-		x, y = utils.lat2coords(config.loc.lat, config.loc.lon, config.addon.mapzoom)
-		tiles = [
-			[x-1, y-1, 0, 0], [x, y-1, 256, 0], [x+1, y-1, 512, 0],
-			[x-1, y, 0, 256], [x, y, 256, 256], [x+1, y, 512, 256],
-			[x-1, y+1, 0, 512], [x, y+1, 256, 512], [x+1, y+1, 512, 512],
-		]
-		config.mapcache[type] = {}
-		timestamp = utils.dt('nowutcstamp')
-		queue = []
-		for count, tile in enumerate(tiles):
-			s, w, n, e = utils.coords2bbox(tile[0], tile[1], config.addon.mapzoom)
-			queue.append([
-				config.loc.id, type, count, config.addon.mapzoom,
-				tile[0], tile[1], tile[2], tile[3], None, timestamp, s, w, n, e,
-			])
-
-		with ThreadPoolExecutor(3) as pool:
-			list(pool.map(api.getmap, queue))
-
-		rendered = api.mapmerge(queue)
-		config.mapcache[type] = {}
-		if not rendered:
-			utils.log(f'[LOC{config.loc.id}] No valid map tiles for {type}', 2)
-			return False
-		self.cleanup_map_history(type)
-		return True
-
-	def getradar(self):
-		"""Build every available new radar frame for an AF3 animation."""
-		frames = api.getrvframes()
-		if not frames:
-			return False
-
-		directory = Path(f'{config.addon_cache}/{config.loc.id}')
-		directory.mkdir(parents=True, exist_ok=True)
-		x, y = utils.lat2coords(config.loc.lat, config.loc.lon, config.addon.mapzoom)
-		layout = maptiles.radar_tile_layout(x, y, config.addon.mapzoom)
-		if not layout['tiles']:
-			return False
-
-		history = min(config.addon.maphistory, 12)
-		pending = [
-			(t, path) for t, path in frames[-history:]
-			if not (directory / f'rvradar_{t}.png').is_file()
-		]
-		# Cap a single location's initial burst to about 90 tile requests.
-		# Subsequent ten-minute refreshes download only newly available frames.
-		budget = max(1, 90 // len(layout['tiles']))
-		success = False
-		for timestamp, path in pending[-budget:]:
-			queue = []
-			for count, (tx, ty, px, py) in enumerate(layout['tiles']):
-				queue.append([
-					config.loc.id, 'rvradar', count, layout['zoom'],
-					tx, ty, px, py, path, timestamp, 0, 0, 0, 0,
-				])
-			config.mapcache['rvradar'] = {}
-			with ThreadPoolExecutor(3) as pool:
-				downloaded = list(pool.map(api.getmap, queue))
-			if all(downloaded) and api.mapmerge_radar(queue, layout):
-				success = True
-			else:
-				utils.log(f'[LOC{config.loc.id}] Radar frame {timestamp} incomplete; retry next update', 2)
-
-		config.mapcache['rvradar'] = {}
-		self.cleanup_map_history('rvradar')
-		return success or any(directory.glob('rvradar_*.png'))
-
-	def cleanup_map_history(self, type):
-		directory = Path(f'{config.addon_cache}/{config.loc.id}')
-		files = sorted(directory.glob(f'{type}_*.png'), reverse=True)
-		history = min(config.addon.maphistory, 12) if type == 'rvradar' else config.addon.maphistory
-		for file in files[history:]:
-			try:
-				file.unlink()
-			except OSError as exc:
-				utils.log(f'Could not remove old map {file}: {exc}', 2)
+	def mapmanager(self):
+		return maps.Maps(
+			f'{config.addon_cache}/{config.loc.id}', config.loc.lat, config.loc.lon,
+			config.addon.mapzoom, config.addon.maphistory,
+			radar=utils.setting('mapradarsource'),
+			country=utils.setting(f'loc{config.loc.id}').split(',')[-1].strip(),
+			muted=utils.setting('mapmuted', 'bool'), legends=utils.setting('maplegends', 'bool'),
+			fetch=api.geturl if self.mode == 'download' else None,
+			aborted=utils.monitor.abortRequested, log=lambda msg: utils.log(msg, 2),
+			font_paths=[config.xbmcvfs.translatePath('special://xbmc/media/Fonts/arial.ttf')],
+		)
 
 	### PROPERTIES
 	def setother(self):
-
-		# Maps
-		if config.addon.api:
-			index = 0
-		else:
-			index = 1
-
-		for layer in config.map_layers:
-
-			# Layers disabled
-			if not utils.setting(f'map{layer}', 'bool') or not utils.setting(f'loc{config.loc.id}maps', 'bool'):
-				for item in [ 'area', 'layer', 'heading', 'time', 'legend' ]:
-					utils.addprop(f'Map.{index}.{item}', '')
-				for idx in range(config.addon.maphistory):
-					utils.addprop(f'Map.{index}.Layer.{idx}', '')
-					utils.addprop(f'Map.{index}.Time.{idx}', '')
-
-				index += 1
-				continue
-
-			# Files
-			dir     = f'{config.addon_cache}/{config.loc.id}'
-			files   = sorted(list(Path(dir).glob(f'{layer}_*.png')), reverse=True)
-			if layer == 'rvradar':
-				current = utils.dt('nowutcstamp')
-				files = [f for f in files if f.stem.split('_')[-1].isdigit()
-					and -900 <= current - int(f.stem.split('_')[-1]) <= 10800]
-			history = min(config.addon.maphistory, 12) if layer == 'rvradar' else config.addon.maphistory
-
-			# Area
-			if files:
-				ut   = int(files[0].stem.split('_')[1])
-				tz   = utils.dt('stamploc', ut)
-				date = tz.strftime(config.kodi.date)
-				time = tz.strftime(config.kodi.time)
-
-				utils.addprop(f'Map.{index}.Area', f'{dir}/osm.png')
-				utils.addprop(f'Map.{index}.Layer', f'{dir}/{layer}_{ut}.png')
-				utils.addprop(f'Map.{index}.Heading', config.localization.layers.get(layer))
-				utils.addprop(f'Map.{index}.Time', f'{date} {time}')
-				utils.addprop(f'Map.{index}.Legend', '')
-			else:
-				for item in [ 'area', 'layer', 'heading', 'time', 'legend' ]:
-					utils.addprop(f'Map.{index}.{item}', '')
-
-			# Layers
-			for idx in range(0, history):
-
-				try:
-					file = files[idx]
-				except:
-					utils.addprop(f'Map.{index}.Layer.{idx}', '')
-					utils.addprop(f'Map.{index}.Time.{idx}', '')
-				else:
-					ut   = int(file.stem.split('_')[1])
-					tz   = utils.dt('stamploc', ut)
-					date = tz.strftime(config.kodi.date)
-					time = tz.strftime(config.kodi.time)
-
-					utils.addprop(f'Map.{index}.Layer.{idx}', f'{dir}/{layer}_{ut}.png')
-					utils.addprop(f'Map.{index}.Time.{idx}', f'{date} {time}')
-
-			# Clear any unused history slots from the previous refresh.
-			for idx in range(history, config.addon.maphistory):
-				utils.addprop(f'Map.{index}.Layer.{idx}', '')
-				utils.addprop(f'Map.{index}.Time.{idx}', '')
-			index += 1
-
-		# No longer publish the retired satellite layer, even if old
-		# window properties survive a provider switch or skin reload.
-		for unused_index in range(index, 10):
-			for item in ['area', 'layer', 'heading', 'time', 'legend']:
-				utils.addprop(f'Map.{unused_index}.{item}', '')
-			for idx in range(config.addon.maphistory):
-				utils.addprop(f'Map.{unused_index}.Layer.{idx}', '')
-				utils.addprop(f'Map.{unused_index}.Time.{idx}', '')
+		manager = self.mapmanager()
+		words = {key: utils.locaddon(value) for key, value in {
+			'loading': 32606, 'unavailable': 32607, 'stale': 32608,
+			'radar': 32400, 'forecast': 32485,
+		}.items()}
+		dateformat = lambda stamp: utils.dt('stamploc', stamp).strftime(config.kodi.date + ' ' + config.kodi.time)
+		for key, value in manager.properties(self.enabled_maps(), config.localization.layers,
+				dateformat, words, api=config.addon.api).items():
+			utils.addprop(key, value)
 
 		# Locations
 		utils.addprop('current.location', config.loc.name)
@@ -688,4 +524,5 @@ class Main():
 				if utils.monitor.abortRequested():
 					utils.log(f'Abort requested ...', 3)
 					break
+
 
