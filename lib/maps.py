@@ -347,6 +347,7 @@ class Maps:
             frames, key=lambda frame: (abs(frame[0] - now), frame[0]))
         completed = []
         requests = 0
+        failed = False
         for valid, path in order:
             if self.aborted():
                 break
@@ -361,6 +362,7 @@ class Maps:
                     save_image(self.directory / filename, self.annotate(image, legend, source))
                 except (OSError, ValueError, TypeError) as exc:
                     self.log('{} frame {} unavailable: {}'.format(kind, valid, exc))
+                    failed = True
                     break
             completed.append({'valid': valid, 'file': filename})
 
@@ -410,7 +412,9 @@ class Maps:
         else:
             self.state[kind] = new_state
         self.commit()
-        return new_state['complete']
+        # A bounded-but-healthy initial download is not an outage. Only
+        # actual provider errors should trigger the Canadian radar fallback.
+        return new_state['complete'], failed
 
     def refresh(self, enabled):
         """Refresh enabled layers independently; one unavailable layer cannot block others."""
@@ -439,14 +443,14 @@ class Maps:
             if 0 <= now - old.get('attempt', 0) < 240:
                 continue
             try:
-                complete = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
+                complete, failed = self.sequence(kind, kind != 'rvradar' or self.prefer_geomet)
             except (OSError, ValueError, TypeError, KeyError, ET.ParseError) as exc:
                 self.log('{} unavailable: {}'.format(kind, exc))
-                complete = False
-            # A partially downloaded Canadian radar sequence also needs a
-            # fallback. Keep any complete ECCC sequence until the alternate
-            # provider actually offers a coherent replacement.
-            if kind == 'rvradar' and self.prefer_geomet and not complete and not self.aborted():
+                complete, failed = False, True
+            # A genuinely failed Canadian radar fetch needs fallback, even
+            # when some valid frames were already downloaded. A normal bounded
+            # history fill does not need an alternate provider.
+            if kind == 'rvradar' and self.prefer_geomet and failed and not self.aborted():
                 try:
                     self.sequence(kind, False)
                 except (OSError, ValueError, TypeError, KeyError) as fallback_exc:
