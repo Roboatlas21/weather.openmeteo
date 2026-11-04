@@ -15,10 +15,12 @@ map_api = {
 	'moon': 'https://api.met.no/weatherapi/sunrise/3.0/moon?lat={}&lon={}&date={}',
 	'osm': 'https://tile.openstreetmap.org/{}/{}/{}.png',
 	'rvindex': 'https://api.rainviewer.com/public/weather-maps.json',
-	'rvradar': 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/4/1_1.png',
+	'rvradar': 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/2/1_1.png',
 	'rvsatellite': 'https://tilecache.rainviewer.com{}/256/{}/{}/{}/0/0_0.png',
-	'gctemp': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS.ETA_TT&FORMAT=image/png',
-	'gcwind': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS.ETA_UU&FORMAT=image/png',
+	'gctemp': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_AirTemp_2m&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE&INTERPOLATION=TRUE',
+	'gcwind': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_Winds_10m&STYLES=WindBarbs_knots&FORMAT=image/png&TRANSPARENT=TRUE',
+	'gccloud': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_TotalCloudCover&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE',
+	'gcprecip': 'https://geo.weather.gc.ca/geomet?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX={},{},{},{}&CRS=EPSG:4326&WIDTH=256&HEIGHT=256&LAYERS=GDPS_15km_PrecipType-Significant1h&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE',
 }
 
 # Limits
@@ -321,9 +323,9 @@ map_alert_condition = {
 
 # Mapping (Rainviewer)
 map_rvradar     = [ 'radar', 'past' ]
-map_rvsatellite = [ 'satellite', 'infrared' ]
-map_rv          = { 'rvradar': map_rvradar, 'rvsatellite': map_rvsatellite }
-map_gc          = { 'gctemp': '', 'gcwind': '' }
+# RainViewer retired its free infrared satellite feed in January 2026.
+map_rv          = { 'rvradar': map_rvradar }
+map_gc          = { 'gctemp': '', 'gcwind': '', 'gccloud': '', 'gcprecip': '' }
 map_layers      = { **map_rv, **map_gc }
 
 # Mapping WMO to KODI
@@ -524,6 +526,8 @@ def localization():
 		'rvsatellite': utils.locaddon(32401),
 		'gctemp': utils.locaddon(32320),
 		'gcwind': utils.locaddon(32323),
+		'gccloud': utils.locaddon(32402),
+		'gcprecip': utils.locaddon(32403),
 	}
 
 # Dynamic settings

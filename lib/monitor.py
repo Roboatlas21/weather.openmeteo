@@ -19,9 +19,10 @@ class Main(xbmc.Monitor):
 				config.init()
 				weather.Main(str(utils.settingrpc("weather.currentlocation")), mode='update')
 
-				# Map zoom
-				if current.get('mapzoom') != self.old.get('mapzoom'):
-					utils.log('Map zoom changed, re-downloading ...')
+				# Map settings can alter both downloaded imagery and visible layers.
+				map_settings = ('mapzoom', 'maprvradar', 'mapgctemp', 'mapgcwind', 'mapgccloud', 'mapgcprecip')
+				if any(current.get(key) != self.old.get(key) for key in map_settings):
+					utils.log('Map settings changed, re-downloading ...')
 
 					for locid in range(1, config.addon.maxlocs):
 						if utils.setting(f'loc{locid}'):

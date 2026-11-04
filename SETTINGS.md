@@ -45,7 +45,7 @@ A comprehensive guide to configuring the `weather.openmeteo` Kodi addon, with de
 The Open-Meteo Weather addon for Kodi provides comprehensive weather forecasting with support for:
 
 - Current conditions and multi-day forecasts (up to 12 days)
-- Interactive weather maps (radar, satellite, temperature, wind)
+- Weather maps (animated precipitation radar, temperature, wind, cloud cover, precipitation type)
 - Air quality monitoring (AQI, particulate matter, pollutants)
 - Pollen forecasts (Europe only)
 - Customizable weather alerts and notifications
@@ -64,7 +64,7 @@ Weather alerts help you stay informed about conditions that may affect your dail
 ### Data Flow
 
 1. **Weather Data Retrieval**: The addon fetches weather data from Open-Meteo's API based on your configured location coordinates
-2. **Map Generation**: Radar and satellite imagery is retrieved from RainViewer, temperature/wind maps from weather.gc.ca and met.no
+2. **Map Generation**: Past radar imagery is retrieved from RainViewer, and temperature/wind/cloud/precipitation overlays from Environment Canada GeoMet. RainViewer no longer provides free satellite imagery.
 3. **Alert Processing**: Every `alert_interval` minutes (default: 30), the addon checks forecasted conditions for the next `alert_hours` hours (default: 8)
 4. **Threshold Comparison**: Current and forecasted values are compared against your configured thresholds
 5. **Notification Display**: If thresholds are exceeded and the corresponding alert level is enabled, a notification is displayed for `alert_duration` seconds
@@ -232,12 +232,14 @@ The addon provides several types of weather maps that can be displayed in suppor
 
 | Setting | Type | Range | Description |
 |---------|------|-------|-------------|
-| `mapzoom` | integer | 1-15 | Zoom level (higher = more detail, smaller area) |
+| `mapzoom` | integer | 2-10 | Zoom level of the map base layer; RainViewer radar tiles are upscaled beyond native zoom 7 |
 | `maphistory` | integer | 1-24 | Hours of historical map data to store for animations |
 | `maprvradar` | boolean | — | Enable RainViewer precipitation radar |
-| `maprvsatellite` | boolean | — | Enable RainViewer infrared satellite |
+| `maprvsatellite` | boolean | — | Retired and hidden: RainViewer infrared satellite no longer available |
 | `mapgctemp` | boolean | — | Enable temperature overlay map |
-| `mapgcwind` | boolean | — | Enable wind overlay map |
+| `mapgcwind` | boolean | — | Enable GeoMet wind-barb overlay map |
+| `mapgccloud` | boolean | — | Enable GeoMet total cloud-cover map |
+| `mapgcprecip` | boolean | — | Enable GeoMet precipitation-type map |
 | `maposm` | boolean | — | Enable OpenStreetMap base layer |
 
 ### Zoom Level Guide
@@ -254,7 +256,7 @@ The addon provides several types of weather maps that can be displayed in suppor
 
 ### Map Data Sources
 
-- **RainViewer**: Provides near-real-time precipitation radar and infrared satellite imagery with global coverage
+- **RainViewer**: Provides two hours of historical precipitation radar at ten-minute intervals (native maximum zoom 7)
 - **weather.gc.ca**: Canadian government weather service (temperature and wind maps)
 - **met.no**: Norwegian Meteorological Institute (additional weather data)
 
@@ -1507,7 +1509,7 @@ Enable debug logging with:
 | Provider | Data | Coverage |
 |----------|------|----------|
 | **Open-Meteo** | Weather forecasts, air quality | Global |
-| **RainViewer** | Precipitation radar, satellite | Global |
+| **RainViewer** | Historical precipitation radar only | Global |
 | **weather.gc.ca** | Temperature/wind maps | Global |
 | **met.no** | Weather data | Global |
 | **Copernicus CAMS** | Pollen data | Europe |

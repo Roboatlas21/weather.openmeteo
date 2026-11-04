@@ -566,6 +566,14 @@ msgctxt "#32401"
 msgid "Satellite"
 msgstr ""
 
+msgctxt "#32402"
+msgid "Cloud cover"
+msgstr ""
+
+msgctxt "#32403"
+msgid "Precipitation type"
+msgstr ""
+
 msgctxt "#32410"
 msgid "m"
 msgstr "m"

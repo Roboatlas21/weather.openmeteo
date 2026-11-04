@@ -10,6 +10,7 @@ def Main():
 	utils.log(f'Starting service ...')
 	utils.setsetting('service', 'idle')
 	utils.log(config.addon_info, 3)
+	api.migrate_map_cache()
 
 	# Geolocation
 	if not utils.geoip() and not utils.setting('loc1'):

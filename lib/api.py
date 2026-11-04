@@ -3,6 +3,9 @@ import io
 import socket
 import json
 import requests
+import time
+from collections import deque
+from threading import Lock
 import xbmc
 import xbmcgui
 
@@ -11,6 +14,7 @@ from pathlib import Path
 from requests.adapters import HTTPAdapter, Retry
 
 from . import config
+from . import maptiles
 from . import utils
 from . import weather
 
@@ -40,8 +44,75 @@ def network():
 	else:
 		return True
 
+# Keep within the public RainViewer API's announced rate limit.
+# Multiple locations and simultaneous tile workers share this process-wide budget.
+_radar_tile_times = deque()
+_radar_tile_lock = Lock()
+_radar_index_cache = (0, [])
+
+
+def _reserve_radar_request():
+    now = time.monotonic()
+    with _radar_tile_lock:
+        while _radar_tile_times and now - _radar_tile_times[0] >= 60:
+            _radar_tile_times.popleft()
+        if len(_radar_tile_times) >= 90:
+            return False
+        _radar_tile_times.append(now)
+        return True
+
+
+def _save_map(image, path):
+    """Write a completed image atomically so Kodi never sees a partial PNG."""
+    target = Path(path)
+    tmp = target.with_suffix(".png.tmp")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        image.save(str(tmp), format="PNG")
+        os.replace(str(tmp), str(target))
+        return True
+    except (OSError, ValueError) as exc:
+        utils.log(f"Map save failed: {target} ({exc})", 2)
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return False
+
+
+def migrate_map_cache():
+    """Invalidate the old radar warning images and retired GeoMet layer tiles."""
+    cache_root = Path(config.addon_cache)
+    cache_root.mkdir(parents=True, exist_ok=True)
+    marker = cache_root / ".map-schema-2026-11-v2"
+    if marker.is_file():
+        return
+
+    for locid in range(1, config.addon.maxlocs):
+        path = cache_root / str(locid)
+        if path.is_dir():
+            for layer in ("rvradar", "rvsatellite", "gctemp", "gcwind", "gccloud", "gcprecip"):
+                for file in path.glob(layer + "_*.png"):
+                    try:
+                        file.unlink()
+                    except OSError as exc:
+                        utils.log(f"Could not clear old map {file}: {exc}", 2)
+        if utils.setting(f"loc{locid}"):
+            utils.setsetting(f"loc{locid}rv", "0")
+            utils.setsetting(f"loc{locid}gc", "0")
+
+    try:
+        marker.write_text("2026-11 map service migration\n", encoding="utf-8")
+    except OSError as exc:
+        utils.log(f"Could not record map cache migration: {exc}", 2)
+
+
 # Get url
 def geturl(url, head=False):
+
+	if url.startswith("https://tilecache.rainviewer.com/") and not _reserve_radar_request():
+		utils.log("RainViewer tile rate budget exhausted; retrying next update", 2)
+		return None
 
 	# Network timeout
 	if network():
@@ -96,65 +167,130 @@ def getdata(type, loc, map=None):
 		with open(Path(file), 'wb') as f:
 			f.write(data)
 
-# Get Map ( 0:loc, 1:type, 2:count, 3:z, 4:x, 5:y, 6:xtile 7:ytile, 8:path, 9:time, 10-13 bbox )
+# Get Map ( 0:loc, 1:type, 2:count, 3:z, 4:x, 5:y,
+#           6:paste_x, 7:paste_y, 8:path, 9:time, 10-13:bbox )
 def getmap(map, head=False):
+    kind = map[1]
+    if kind == "osm":
+        # Wrap across the antimeridian, but never request invalid polar rows.
+        if not 0 <= map[5] < (1 << map[3]):
+            return False
+        url = config.map_api[kind].format(map[3], map[4] % (1 << map[3]), map[5])
+    elif kind == "rvradar":
+        url = config.map_api[kind].format(map[8], map[3], map[4], map[5])
+    elif kind in ("gctemp", "gcwind", "gccloud", "gcprecip"):
+        url = config.map_api[kind].format(map[10], map[11], map[12], map[13])
+    else:
+        return False
 
-	if map[1] == 'osm':
-		url = config.map_api.get(map[1]).format(map[3], map[4], map[5])
-	elif map[1] == 'rvradar':
-		url = config.map_api.get(map[1]).format(map[8], map[3], map[4], map[5])
-	elif map[1] == 'rvsatellite':
-		url = config.map_api.get(map[1]).format(map[8], map[3], map[4], map[5])
-	elif map[1] == 'gctemp':
-		url = config.map_api.get(map[1]).format(map[10], map[11], map[12], map[13])
-	elif map[1] == 'gcwind':
-		url = config.map_api.get(map[1]).format(map[10], map[11], map[12], map[13])
+    if head:
+        return geturl(url, head=True)
 
-	# HEAD
-	if head:
-		data = geturl(url, head=True)
-		return data
+    data = geturl(url)
+    if not data or not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        utils.log(f"Skipping invalid or unavailable {kind} map tile", 2)
+        return False
 
-	# GET
-	data = geturl(url)
+    # WMS errors can be returned as HTTP 200 XML; don't store those, or
+    # substitute a missing-tile warning that would appear in AF3's animation.
+    try:
+        with Image.open(io.BytesIO(data)) as tile:
+            if tile.format != "PNG" or tile.size != (256, 256):
+                raise ValueError(f"Unexpected {kind} tile dimensions or format")
+            tile.verify()
+    except (OSError, ValueError) as exc:
+        utils.log(f"Invalid {kind} PNG tile: {exc}", 2)
+        return False
 
-	if data:
-		config.mapcache[map[1]][map[2]] = data
-	else:
-		with open(Path(f'{config.addon_path}/resources/tile.png'), 'rb') as f:
-			tile = f.read()
+    config.mapcache[kind][map[2]] = data
+    return True
 
-		config.mapcache[map[1]][map[2]] = tile
 
-# Map merge
+def _tile_data(kind, index):
+    data = config.mapcache.get(kind, {}).get(index)
+    if not data:
+        return None
+    try:
+        with Image.open(io.BytesIO(data)) as tile:
+            return tile.convert("RGBA")
+    except (OSError, ValueError):
+        return None
+
+
 def mapmerge(map):
-	image = Image.new("RGBA", (756, 756), None)
+    """Merge the original 3x3 map, with correct 768-pixel dimensions."""
+    if not map:
+        return False
+    image = Image.new("RGBA", (maptiles.CANVAS_SIZE, maptiles.CANVAS_SIZE))
+    rendered = 0
+    for item in map:
+        tile = _tile_data(item[1], item[2])
+        if tile is not None:
+            image.paste(tile, (item[6], item[7]))
+            rendered += 1
+    if not rendered:
+        return False
 
-	for item in map:
+    loc, kind, timestamp = map[0][0], map[0][1], map[0][9]
+    suffix = f"{kind}.png" if kind == "osm" else f"{kind}_{timestamp}.png"
+    return _save_map(image, f"{config.addon_cache}/{loc}/{suffix}")
 
-		try:
-			tile = Image.open(io.BytesIO(config.mapcache[item[1]][item[2]]))
-		except:
-			tile = Image.open(f'{config.addon_path}/resources/tile.png')
-		else:
-			image.paste( tile, (item[6], item[7]))
 
-	if map[0][1] == 'osm':
-		image.save(f'{config.addon_cache}/{map[0][0]}/{map[0][1]}.png')
-	else:
-		image.save(f'{config.addon_cache}/{map[0][0]}/{map[0][1]}_{map[0][9]}.png')
+def mapmerge_radar(map, layout):
+    """Resample zoom-7 radar imagery into the OSM map's original viewport.
 
-# Get rvdata
-def getrvindex(type):
-	try:
-		data = json.loads(geturl(config.map_api.get('rvindex')))
-		map  = config.map_layers.get(type)
-		time = data[map[0]][map[1]][-1]['time']
-		path = data[map[0]][map[1]][-1]['path']
-	except:
-		return None, None
-	else:
-		return time, path
+    An inverse affine transform avoids shifting the rain relative to roads
+    when the user selects zoom 8, 9 or 10 in Kodi's weather settings.
+    """
+    if not map:
+        return False
+    native = Image.new("RGBA", (
+        layout["columns"] * maptiles.TILE_SIZE,
+        layout["rows"] * maptiles.TILE_SIZE,
+    ))
+    rendered = 0
+    for item in map:
+        tile = _tile_data("rvradar", item[2])
+        if tile is not None:
+            native.paste(tile, (item[6], item[7]))
+            rendered += 1
+    # Do not save a half-loaded radar mosaic as a seemingly valid frame.
+    if rendered != len(map):
+        return False
+
+    affine_mode = Image.Transform.AFFINE if hasattr(Image, "Transform") else Image.AFFINE
+    bilinear = Image.Resampling.BILINEAR if hasattr(Image, "Resampling") else Image.BILINEAR
+    output = native.transform(
+        (maptiles.CANVAS_SIZE, maptiles.CANVAS_SIZE),
+        affine_mode, layout["affine"], resample=bilinear,
+    )
+    timestamp = map[0][9]
+    loc = map[0][0]
+    return _save_map(output, f"{config.addon_cache}/{loc}/rvradar_{timestamp}.png")
+
+
+def getrvframes():
+    """Return current RainViewer past-radar frames, cached for five minutes."""
+    global _radar_index_cache
+    now = time.monotonic()
+    cached_at, cached_frames = _radar_index_cache
+    if cached_frames and now - cached_at < 300:
+        return cached_frames
+
+    data = geturl(config.map_api["rvindex"])
+    try:
+        frames = maptiles.radar_frames(json.loads(data), limit=12)
+        now_utc = utils.dt("nowutcstamp")
+        frames = [(stamp, path) for stamp, path in frames
+                  if -900 <= now_utc - stamp <= 10800]
+    except (TypeError, ValueError, UnicodeDecodeError):
+        frames = []
+    if frames:
+        _radar_index_cache = (now, frames)
+    else:
+        utils.log("RainViewer past radar catalogue unavailable", 2)
+    return frames
+
 
 # Get location (GeoIP)
 def getloc(locid):

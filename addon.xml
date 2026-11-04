@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="weather.openmeteo" name="Open-Meteo" version="1.0.29" provider-name="OpenHT">
+<addon id="weather.openmeteo" name="Open-Meteo" version="1.0.30" provider-name="OpenHT">
 	<requires>
 		<import addon="xbmc.python" version="3.0.0"/>
 		<import addon="script.module.requests" version="2.27.1+matrix.1"/>
@@ -37,7 +37,7 @@
 		<forum>https://forum.kodi.tv/forumdisplay.php?fid=155</forum>
 		<website>https://openht.org</website>
 		<email>support@openht.org</email>
-		<source>https://github.com/bkury/weather.openmeteo</source>
+		<source>https://github.com/Roboatlas21/weather.openmeteo</source>
 		<assets>
 			<icon>resources/icon.png</icon>
 			<banner>resources/banner.png</banner>
